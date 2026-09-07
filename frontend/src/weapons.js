@@ -7,6 +7,10 @@ export function weaponDef(id) {
   return arena.weapons[id] || arena.weapons.pistol;
 }
 
+export function weaponIsAuto(id) {
+  return !!weaponDef(id).auto;
+}
+
 export function createInventory() {
   return {
     active: 'pistol',

@@ -30,6 +30,7 @@ import {
   applyNetworkWeapons,
   WEAPON_SLOTS,
   weaponDef,
+  weaponIsAuto,
   weaponShortName,
 } from "./weapons.js";
 import { createTouchControls } from "./touchControls.js";
@@ -76,7 +77,7 @@ const camera = new THREE.PerspectiveCamera(
   0.1,
   450,
 );
-const scopeCam = new THREE.PerspectiveCamera(34, 1, 0.1, 450);
+const scopeCam = new THREE.PerspectiveCamera(34, 1, 0.15, 450);
 const scopeRT = new THREE.WebGLRenderTarget(1024, 1024, { depthBuffer: true });
 scopeRT.texture.colorSpace = THREE.SRGBColorSpace;
 scopeRT.texture.generateMipmaps = false;
@@ -84,10 +85,11 @@ scopeRT.texture.minFilter = THREE.LinearFilter;
 scopeRT.texture.magFilter = THREE.LinearFilter;
 function resizeScopeRT() {
   const pr = Math.min(devicePixelRatio, 2);
-  scopeRT.setSize(
-    Math.max(1, Math.round(innerWidth * pr)),
-    Math.max(1, Math.round(innerHeight * pr)),
+  const size = Math.max(
+    1,
+    Math.round(Math.min(innerWidth, innerHeight) * pr),
   );
+  scopeRT.setSize(size, size);
 }
 resizeScopeRT();
 const scopeComposite = new THREE.Scene();
@@ -225,6 +227,7 @@ function equipGun(type) {
     0.025,
     type === "rpg" ? 0.35 : (GUN_FLASH_Z[type] ?? GUN_FLASH_Z.pistol),
   );
+  setObjectLayer(player, 1);
 }
 function applyRpgPose() {
   const isRpg = activeWeaponId() === "rpg";
@@ -266,10 +269,12 @@ function rpgImpactTargets(end, splash) {
     setTimeout(finishRound, 250);
   }
 }
+function setObjectLayer(obj, layer) {
+  obj.traverse((o) => o.layers.set(layer));
+}
 player.layers.set(1);
-player.traverse((o) => o.layers.set(1));
+setObjectLayer(player, 1);
 camera.layers.enable(1);
-scopeCam.layers.disable(1);
 const targets = [];
 const targetMeshes = [];
 const positions = [
@@ -335,6 +340,7 @@ let yaw = 0,
   shots = 0,
   elapsed = 0,
   shotCooldown = 0,
+  fireHeld = false,
   flashTime = 0,
   hitTime = 0,
   muted = false;
@@ -428,6 +434,16 @@ function isAimHeld() {
     (desktop.held("aim", keys, pointerButtons) ||
       (touch?.enabled && touch.state.aim))
   );
+}
+function wantsFire() {
+  if (!active) return false;
+  if (touch?.enabled) return !!touch.state.fire;
+  return desktop.held("shoot", keys, pointerButtons);
+}
+function tryFire() {
+  const held = wantsFire();
+  if (held && (weaponIsAuto(activeWeaponId()) || !fireHeld)) shoot();
+  fireHeld = held;
 }
 function wantsAim() {
   if (!isAimHeld() || wantsCrawl() || !canAim(activeWeaponId())) return false;
@@ -584,6 +600,7 @@ function tryReload() {
 }
 function enterGame() {
   active = true;
+  fireHeld = true;
   document.body.classList.add("playing");
   $("start").style.display = "none";
   if (touch?.enabled) touch.setVisible(true);
@@ -593,6 +610,7 @@ function pauseGame() {
   document.body.classList.remove("playing");
   keys.clear();
   pointerButtons = 0;
+  fireHeld = false;
   aimBlend = 0;
   touch?.reset();
   if (touch?.enabled) {
@@ -702,6 +720,7 @@ function reset() {
   }
   $("hitmarker")?.classList.remove("show");
   reloading = reloadingLeft = shotCooldown = 0;
+  fireHeld = false;
   hits = shots = elapsed = 0;
   complete = false;
   equipGun("pistol");
@@ -745,9 +764,11 @@ document.addEventListener("pointerlockchange", () => {
   active = document.pointerLockElement === canvas;
   document.body.classList.toggle("playing", active);
   $("start").style.display = active || complete ? "none" : "flex";
+  if (active) fireHeld = true;
   if (!active) {
     keys.clear();
     pointerButtons = 0;
+    fireHeld = false;
     aimBlend = 0;
     $("play").innerHTML = "RESUME THE RANGE <span>↗</span>";
   }
@@ -782,12 +803,12 @@ addEventListener("keydown", (e) => {
   if (desktop.matches("weapon3", e.code)) trySwitch(3);
   if (desktop.matches("weapon4", e.code)) trySwitch(4);
   if (desktop.matches("reload", e.code)) tryReload();
-  if (desktop.matches("shoot", e.code) && !desktop.isMouse("shoot")) shoot();
 });
 addEventListener("keyup", (e) => keys.delete(e.code));
 addEventListener("blur", () => {
   keys.clear();
   pointerButtons = 0;
+  fireHeld = false;
   if (touch?.enabled) {
     touch.reset();
     return;
@@ -815,11 +836,13 @@ function shoot() {
   if (multiplayer.state.connected) {
     if (
       active &&
+      shotCooldown <= 0 &&
       multiplayer.state.snapshot?.state === "running" &&
       !networkSelf?.reloading
     ) {
       sendNetworkInput();
       multiplayer.send({ type: "shoot" });
+      shotCooldown = weaponDef(activeWeaponId()).cooldown;
     }
     return;
   }
@@ -884,26 +907,24 @@ function shoot() {
   }
   updateHUD();
 }
-function shouldShootFromPointer(e) {
-  if (!active || touch?.enabled) return false;
-  if (!desktop.isMouse("shoot")) return false;
-  if (e.button !== Number(desktop.codeOf("shoot").slice(5))) return false;
-  const t = e.target;
-  if (t === canvas || canvas.contains(t)) return true;
-  return false;
-}
-addEventListener("mousedown", (e) => {
-  if (shouldShootFromPointer(e)) shoot();
-});
 canvas.addEventListener("contextmenu", (e) => e.preventDefault());
 function syncScopeCamera() {
-  scopeCam.position.copy(camera.position);
-  scopeCam.quaternion.copy(camera.quaternion);
   const id = activeWeaponId();
+  const forward = new THREE.Vector3(
+    -Math.sin(yaw) * Math.cos(pitch),
+    Math.sin(pitch),
+    -Math.cos(yaw) * Math.cos(pitch),
+  );
+  const eye = THREE.MathUtils.lerp(1.75, 0.92, crawlBlend);
   scopeCam.fov = usesScopeLens(id) ? scopeZoom.sniper : DEFAULT_FOV;
-  scopeCam.aspect = camera.aspect;
-  scopeCam.near = camera.near;
+  scopeCam.aspect = 1;
+  scopeCam.near = 0.2;
   scopeCam.far = camera.far;
+  scopeCam.position
+    .copy(player.position)
+    .add(new THREE.Vector3(0, eye, 0))
+    .addScaledVector(forward, 0.35);
+  scopeCam.lookAt(lookTarget);
   scopeCam.updateProjectionMatrix();
 }
 function updateCamera() {
@@ -960,6 +981,8 @@ function frame() {
   requestAnimationFrame(frame);
   const dt = Math.min(clock.getDelta(), 0.05);
   const time = clock.getElapsedTime();
+  shotCooldown = Math.max(0, shotCooldown - dt);
+  tryFire();
   if (active && touch?.enabled) {
     updateFireButton();
     const look = touch.consumeLook();
@@ -972,7 +995,6 @@ function frame() {
     }
     const zoom = touch.consumeZoom();
     if (zoom && wantsAim()) adjustScopeZoom(zoom);
-    if (touch.state.fire) shoot();
     if (touch.jumpEdge) {
       if (multiplayer.state.connected) multiplayer.send({ type: "jump" });
       touch.clearJumpEdge();
@@ -1011,7 +1033,6 @@ function frame() {
       );
     else legs.forEach((l) => (l.rotation.x *= 0.8));
     player.rotation.y = yaw;
-    shotCooldown = Math.max(0, shotCooldown - dt);
     if (reloading) {
       reloadingLeft = Math.max(0, reloadingLeft - dt);
       gun.rotation.x = -0.5;
@@ -1118,6 +1139,7 @@ const multiplayer = createMultiplayer({
       if (!remote) {
         const model = player.clone(true);
         model.traverse((o) => {
+          o.layers.set(0);
           if (o.isMesh && o.material === uniform) {
             o.material = mat("#a76d4d");
           }
@@ -1144,6 +1166,7 @@ const multiplayer = createMultiplayer({
         );
         label.position.set(0, 2.8, 0);
         label.scale.set(2.7, 0.42, 1);
+        label.layers.set(0);
         model.add(label);
         scene.add(model);
         remote = { model, data: opponent, label };

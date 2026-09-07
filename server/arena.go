@@ -14,7 +14,7 @@ type Cover struct { Type string; X, Z, W, H, D float64 }
 type Hill struct { X,Z,Height,Width float64 }
 type LootDefinition struct { ID int `json:"id"`; X float64 `json:"x"`; Z float64 `json:"z"`; Weapon string `json:"weapon"` }
 type LootState struct { ID int `json:"id"`; ReadyAt int64 `json:"readyAt"` }
-type WeaponDefinition struct { Name string; Magazine,Damage int; Cooldown,Reload,Range,Fov,Splash float64 }
+type WeaponDefinition struct { Name string; Magazine,Damage int; Cooldown,Reload,Range,Fov,Splash float64; Auto bool }
 type Arena struct { Radius,PlayRadius,CenterZ,WalkSpeed,SprintSpeed,CrawlSpeed,AimSpeed,Acceleration,Gravity,JumpSpeed float64; Hills []Hill; Cover []Cover; Loot []LootDefinition; Weapons map[string]WeaponDefinition }
 var arena = func()Arena{var a Arena;if err:=json.Unmarshal(arenaJSON,&a);err!=nil{panic(err)};return a}()
 func groundHeight(x,z float64)float64{

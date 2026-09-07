@@ -61,6 +61,7 @@
       "name": "AK-47 ASSAULT",
       "magazine": 30,
       "damage": 28,
+      "auto": true,
       "cooldown": 0.12,
       "reload": 1.8,
       "range": 130,
