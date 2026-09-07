@@ -1,15 +1,16 @@
 import arena from '../../server/arena.json' with { type: 'json' };
 
-export const WEAPON_SLOTS = ['rifle', 'sniper'];
+export const WEAPON_SLOTS = ['pistol', 'ak47', 'sniper', 'rpg'];
+export const MAX_WEAPONS = 4;
 
 export function weaponDef(id) {
-  return arena.weapons[id] || arena.weapons.rifle;
+  return arena.weapons[id] || arena.weapons.pistol;
 }
 
 export function createInventory() {
   return {
-    active: 'rifle',
-    weapons: { rifle: arena.weapons.rifle.magazine },
+    active: 'pistol',
+    weapons: { pistol: arena.weapons.pistol.magazine },
     lootReady: new Map(),
   };
 }
@@ -30,10 +31,18 @@ export function switchSlot(inv, slot) {
   return id ? switchWeapon(inv, id) : false;
 }
 
+export function canAddWeapon(inv, id) {
+  if (!arena.weapons[id]) return false;
+  if (id in inv.weapons) return false;
+  return Object.keys(inv.weapons).length < MAX_WEAPONS;
+}
+
 export function addWeapon(inv, id) {
+  if (!canAddWeapon(inv, id)) return false;
   syncActiveAmmo(inv);
   inv.weapons[id] = weaponDef(id).magazine;
   inv.active = id;
+  return true;
 }
 
 export function activeWeapon(inv) {
@@ -48,6 +57,13 @@ export function setActiveAmmo(inv, ammo) {
   inv.weapons[inv.active] = ammo;
 }
 
+export function weaponShortName(id) {
+  const name = weaponDef(id).name;
+  if (id === 'ak47') return 'AK-47';
+  if (id === 'rpg') return 'RPG-7';
+  return name.split(' ')[0];
+}
+
 export function updateWeaponBar(inv, reloading = false) {
   WEAPON_SLOTS.forEach((id, i) => {
     const slot = document.querySelector(`.weapon-slot[data-slot="${i + 1}"]`);
@@ -58,7 +74,7 @@ export function updateWeaponBar(inv, reloading = false) {
     slot.classList.toggle('locked', !owned);
     const ammoEl = slot.querySelector('.weapon-ammo');
     const nameEl = slot.querySelector('.weapon-name');
-    if (nameEl) nameEl.textContent = weaponDef(id).name.split(' ')[0];
+    if (nameEl) nameEl.textContent = weaponShortName(id);
     if (ammoEl) {
       if (!owned) ammoEl.textContent = '—';
       else if (reloading && inv.active === id) ammoEl.textContent = '··';
@@ -70,6 +86,6 @@ export function updateWeaponBar(inv, reloading = false) {
 }
 
 export function applyNetworkWeapons(me) {
-  const weapons = me.weapons || { [me.weapon || 'rifle']: me.ammo };
-  return { active: me.weapon || 'rifle', weapons };
+  const weapons = me.weapons || { [me.weapon || 'pistol']: me.ammo };
+  return { active: me.weapon || 'pistol', weapons };
 }

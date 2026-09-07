@@ -62,6 +62,6 @@ export function moveBody(body, input, dt) {
 }
 
 export function nearestLoot(body, readyAt, now) {
-  return arena.loot.filter(l => Math.hypot(body.x - l.x, body.z - l.z) < 3 && Math.abs(body.y - surfaceHeight(l.x, l.z)) < 2.5 && (readyAt.get(l.id) || 0) <= now)
+  return arena.loot.filter(l => Math.hypot(body.x - l.x, body.z - l.z) < 3.2 && Math.abs(body.y - surfaceHeight(l.x, l.z)) < 2.5 && (readyAt.get(l.id) || 0) <= now)
     .sort((a, b) => Math.hypot(body.x - a.x, body.z - a.z) - Math.hypot(body.x - b.x, body.z - b.z))[0];
 }

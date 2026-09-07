@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { arena, groundHeight } from './gameplay.js';
 import { createGun } from './character.js';
+import { weaponDef, weaponShortName } from './weapons.js';
 import {
   createGrassTexture, createSandTexture, createRockTexture,
   createWoodTexture, createMetalTexture, createTerrainMaterial, texturedMaterial,
@@ -233,6 +234,50 @@ export function buildIsland(scene) {
     scene.add(b); birds.push(b);
   }
 
+  function createChestPrompt(weaponId) {
+    const name = weaponDef(weaponId).name;
+    const canvas = document.createElement('canvas');
+    canvas.width = 420; canvas.height = 140;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = 'rgba(12,32,28,.92)';
+    ctx.beginPath();
+    ctx.roundRect(12, 10, 396, 120, 10);
+    ctx.fill();
+    ctx.strokeStyle = '#dbea92';
+    ctx.lineWidth = 3;
+    ctx.stroke();
+    ctx.fillStyle = '#dbea92';
+    ctx.font = 'bold 22px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(name, 210, 48);
+    ctx.fillStyle = 'rgba(234,242,221,.75)';
+    ctx.font = '14px sans-serif';
+    ctx.fillText('INSIDE CRATE', 210, 72);
+    ctx.fillStyle = 'rgba(17,44,37,.95)';
+    ctx.fillRect(28, 86, 44, 34);
+    ctx.strokeStyle = '#eaf2dd';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(28, 86, 44, 34);
+    ctx.fillStyle = '#eaf2dd';
+    ctx.font = 'bold 24px sans-serif';
+    ctx.fillText('E', 50, 110);
+    ctx.fillStyle = '#dbea92';
+    ctx.font = 'bold 18px sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText('PICK UP', 82, 110);
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false, transparent: true }));
+    sprite.scale.set(2.2, .73, 1);
+    sprite.renderOrder = 10;
+    sprite.visible = false;
+    return sprite;
+  }
+
+  const LOOT_COLORS = { ak47: '#d6ef93', sniper: '#f8c97a', rpg: '#ff9a6a' };
+  const lootColor = weapon => LOOT_COLORS[weapon] || '#d6ef93';
+  const PICKUP_RANGE = 3.2;
+
   const chests = new Map();
   for (const l of arena.loot) {
     const root = new THREE.Group();
@@ -244,12 +289,35 @@ export function buildIsland(scene) {
     const lid = new THREE.Group(); lid.position.set(0, .79, -.56); root.add(lid);
     box(1.96, .16, 1.2, mat('#8b9560'), 0, 0, .56, lid);
     box(.18, .10, 1.22, mat('#d6c285'), 0, .11, .56, lid);
-    const gun = createGun(l.weapon); gun.position.set(.1, .43, 0); gun.rotation.y = Math.PI / 2; root.add(gun);
-    const beacon = mesh(new THREE.CylinderGeometry(.018, .018, 3.4, 6), new THREE.MeshBasicMaterial({ color: l.weapon === 'sniper' ? '#f8c97a' : '#d6ef93', transparent: true, opacity: .5 }), root);
+    const gun = createGun(l.weapon);
+    gun.position.set(.1, .43, 0);
+    gun.rotation.y = Math.PI / 2;
+    gun.scale.setScalar(.95);
+    root.add(gun);
+    const color = lootColor(l.weapon);
+    const beacon = mesh(new THREE.CylinderGeometry(.018, .018, 3.4, 6), new THREE.MeshBasicMaterial({ color, transparent: true, opacity: .5 }), root);
     beacon.position.y = 2.5; beacon.castShadow = false;
-    const marker = mesh(new THREE.OctahedronGeometry(.18), new THREE.MeshBasicMaterial({ color: l.weapon === 'sniper' ? '#f8c97a' : '#d6ef93' }), root);
+    const marker = mesh(new THREE.OctahedronGeometry(.18), new THREE.MeshBasicMaterial({ color }), root);
     marker.position.y = 4.2; marker.castShadow = false;
-    chests.set(l.id, { root, lid, gun, beacon, marker, opened: 0, readyAt: 0 });
+    const prompt = createChestPrompt(l.weapon);
+    prompt.position.y = 2.45;
+    root.add(prompt);
+    const tagCanvas = document.createElement('canvas');
+    tagCanvas.width = 256; tagCanvas.height = 64;
+    const tagCtx = tagCanvas.getContext('2d');
+    tagCtx.fillStyle = 'rgba(17,44,37,.85)';
+    tagCtx.fillRect(0, 0, 256, 64);
+    tagCtx.fillStyle = color;
+    tagCtx.font = 'bold 26px sans-serif';
+    tagCtx.textAlign = 'center';
+    tagCtx.textBaseline = 'middle';
+    tagCtx.fillText(weaponShortName(l.weapon), 128, 32);
+    const tag = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(tagCanvas), depthTest: false, transparent: true }));
+    tag.scale.set(1.1, .28, 1);
+    tag.position.set(0, 1.05, 0);
+    tag.visible = false;
+    root.add(tag);
+    chests.set(l.id, { root, lid, gun, beacon, marker, prompt, tag, weapon: l.weapon, opened: 0, readyAt: 0, gunBaseY: .43 });
   }
 
   function update(time, dt, body, loot, now) {
@@ -257,10 +325,24 @@ export function buildIsland(scene) {
     for (const [id, c] of chests) {
       c.readyAt = loot?.get(id) || 0;
       const empty = c.readyAt > now;
-      const near = body && Math.hypot(body.x - c.root.position.x, body.z - c.root.position.z) < 4;
-      c.opened = THREE.MathUtils.damp(c.opened, empty || near ? 1 : 0, 8, dt);
-      c.lid.rotation.x = -c.opened * 1.9;
-      c.gun.visible = !empty; c.beacon.visible = !empty; c.marker.visible = !empty;
+      const near = body && Math.hypot(body.x - c.root.position.x, body.z - c.root.position.z) < PICKUP_RANGE
+        && Math.abs(body.y - c.root.position.y) < 2.5;
+      const shouldOpen = near && !empty;
+      c.opened = THREE.MathUtils.damp(c.opened, shouldOpen ? 1 : 0, 12, dt);
+      c.lid.rotation.x = -c.opened * 1.85;
+      c.gun.visible = !empty;
+      c.gun.position.y = c.gunBaseY + c.opened * .28;
+      c.gun.position.z = c.opened * .08;
+      c.gun.rotation.x = -c.opened * .25;
+      c.beacon.visible = !empty;
+      c.marker.visible = !empty && !near;
+      c.tag.visible = !empty && c.opened > .35;
+      c.prompt.visible = shouldOpen && c.opened > .25;
+      if (c.prompt.visible) {
+        c.prompt.material.opacity = .92 + Math.sin(time * 4 + id) * .08;
+        c.prompt.position.y = 2.45 + Math.sin(time * 3 + id) * .05;
+      }
+      if (c.tag.visible) c.tag.position.y = 1.05 + Math.sin(time * 2.5 + id) * .04;
       c.marker.rotation.y = time;
       c.marker.position.y = 3.8 + Math.sin(time * 2 + id) * .12;
     }

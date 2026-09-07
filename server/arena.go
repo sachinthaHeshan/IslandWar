@@ -14,7 +14,7 @@ type Cover struct { Type string; X, Z, W, H, D float64 }
 type Hill struct { X,Z,Height,Width float64 }
 type LootDefinition struct { ID int `json:"id"`; X float64 `json:"x"`; Z float64 `json:"z"`; Weapon string `json:"weapon"` }
 type LootState struct { ID int `json:"id"`; ReadyAt int64 `json:"readyAt"` }
-type WeaponDefinition struct { Name string; Magazine,Damage int; Cooldown,Reload,Range,Fov float64 }
+type WeaponDefinition struct { Name string; Magazine,Damage int; Cooldown,Reload,Range,Fov,Splash float64 }
 type Arena struct { Radius,PlayRadius,CenterZ,WalkSpeed,SprintSpeed,CrawlSpeed,AimSpeed,Acceleration,Gravity,JumpSpeed float64; Hills []Hill; Cover []Cover; Loot []LootDefinition; Weapons map[string]WeaponDefinition }
 var arena = func()Arena{var a Arena;if err:=json.Unmarshal(arenaJSON,&a);err!=nil{panic(err)};return a}()
 func groundHeight(x,z float64)float64{
@@ -34,10 +34,11 @@ func surfaceHeight(x,z float64)float64{
  }
  return h
 }
-func weaponFor(p *Player)WeaponDefinition{if w,ok:=arena.Weapons[p.Weapon];ok{return w};return arena.Weapons["rifle"]}
+func weaponFor(p *Player)WeaponDefinition{if w,ok:=arena.Weapons[p.Weapon];ok{return w};return arena.Weapons["pistol"]}
 func (p *Player) stashAmmo(){if p.Weapons==nil{p.Weapons=map[string]int{}};p.Weapons[p.Weapon]=p.Ammo}
+func (p *Player) canTakeWeapon(name string)bool{if _,ok:=arena.Weapons[name];!ok{return false};if p.Weapons==nil{return true};if _,has:=p.Weapons[name];has{return false};return len(p.Weapons)<4}
 func (p *Player) switchTo(name string){if p.Weapons==nil{return};if _,ok:=p.Weapons[name];!ok{return};if _,ok:=arena.Weapons[name];!ok{return};p.stashAmmo();p.Weapon=name;p.Ammo=p.Weapons[name];p.Reloading=false;p.reload=false;p.reloadEnd=time.Time{}}
-func (p *Player) grantWeapon(name string){if p.Weapons==nil{p.Weapons=map[string]int{}};p.stashAmmo();mag:=arena.Weapons[name].Magazine;p.Weapons[name]=mag;p.Weapon=name;p.Ammo=mag;p.Reloading=false;p.reload=false;p.Aiming=false;p.reloadEnd=time.Time{}}
+func (p *Player) grantWeapon(name string)bool{if !p.canTakeWeapon(name){return false};if p.Weapons==nil{p.Weapons=map[string]int{}};p.stashAmmo();mag:=arena.Weapons[name].Magazine;p.Weapons[name]=mag;p.Weapon=name;p.Ammo=mag;p.Reloading=false;p.reload=false;p.Aiming=false;p.reloadEnd=time.Time{};return true}
 func canMove(x,z,y float64)bool{
  if math.Hypot(x,z-arena.CenterZ)>=arena.PlayRadius{return false}
  for _,c:=range arena.Cover{
@@ -71,7 +72,7 @@ func(r *Room)pickup(p *Player,now time.Time){
  var closest *LootDefinition;distance:=3.0
  for i:=range arena.Loot{l:=&arena.Loot[i];d:=math.Hypot(p.X-l.X,p.Z-l.Z);if d<distance&&r.loot[l.ID]<=now.UnixMilli()&&math.Abs(p.Y-groundHeight(l.X,l.Z))<2.5{distance=d;closest=l}}
  if closest==nil{return}
- p.grantWeapon(closest.Weapon)
+ if !p.grantWeapon(closest.Weapon){return}
  r.loot[closest.ID]=now.Add(20*time.Second).UnixMilli()
  r.events=append(r.events,Event{Type:"pickup",Shooter:p.ID,Weapon:p.Weapon})
 }

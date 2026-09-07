@@ -148,9 +148,9 @@ func (r *Room) spawn(p *Player, now time.Time) {
 	p.VX=0;p.VY=0;p.VZ=0;p.Grounded=true;p.Aiming=false;p.Sprinting=false;p.Crawling=false;p.jump=false
 	p.Yaw = math.Atan2(p.X, p.Z+8)
 	p.Health = 100
- p.Weapon = "rifle"
- p.Weapons = map[string]int{"rifle": arena.Weapons["rifle"].Magazine}
- p.Ammo = p.Weapons["rifle"]
+ p.Weapon = "pistol"
+ p.Weapons = map[string]int{"pistol": arena.Weapons["pistol"].Magazine}
+ p.Ammo = p.Weapons["pistol"]
 	p.RespawnAt = 0
 	p.ProtectedUntil = now.Add(2 * time.Second).UnixMilli()
 	p.Reloading = false
@@ -319,21 +319,49 @@ func (r *Room) fire(p *Player, now time.Time) {
 	shotDir := aim.sub(muzzle).unit()
 	distance, victim := r.trace(muzzle, shotDir, p.ID, now)
 	event := Event{Type: "shot", Shooter: p.ID, Start: muzzle, End: muzzle.add(shotDir.mul(distance)),Weapon:p.Weapon}
+	impact := muzzle.add(shotDir.mul(distance))
 	if victim != nil {
 		event.Victim = victim.ID
 		event.Damage=w.Damage
 		if p.Weapon=="sniper"&&event.End.Y>=victim.Y+playerHitHeight(victim)*.78{event.Damage=100;event.Headshot=true}
-		victim.Health -= event.Damage
-		if victim.Health <= 0 {
-			victim.Health = 0
-			victim.Deaths++
-			victim.RespawnAt = now.Add(3 * time.Second).UnixMilli()
-			victim.shoot = false
-			p.Kills++
-			event.Kill = true
+		r.applyDamage(victim, event.Damage, p, now, &event)
+	}
+	if w.Splash > 0 {
+		for _, other := range r.players {
+			if other.ID == p.ID || other.Health <= 0 || !other.Connected || now.UnixMilli() < other.ProtectedUntil {
+				continue
+			}
+			if math.Hypot(other.X-impact.X, other.Z-impact.Z) > w.Splash {
+				continue
+			}
+			if math.Abs(other.Y-impact.Y) > w.Splash+.5 {
+				continue
+			}
+			if victim != nil && other.ID == victim.ID {
+				continue
+			}
+			falloff := 1 - math.Hypot(other.X-impact.X, other.Z-impact.Z)/w.Splash*.35
+			r.applyDamage(other, int(float64(w.Damage)*falloff), p, now, &event)
 		}
 	}
 	r.events = append(r.events, event)
+}
+func (r *Room) applyDamage(victim *Player, damage int, shooter *Player, now time.Time, event *Event) {
+	if damage <= 0 || victim.Health <= 0 {
+		return
+	}
+	victim.Health -= damage
+	if victim.Health <= 0 {
+		victim.Health = 0
+		victim.Deaths++
+		victim.RespawnAt = now.Add(3 * time.Second).UnixMilli()
+		victim.shoot = false
+		shooter.Kills++
+		event.Kill = true
+	}
+	if event.Victim == 0 {
+		event.Victim = victim.ID
+	}
 }
 func (h *Hub) run(ctx context.Context) {
 	ticker := time.NewTicker(50 * time.Millisecond)
@@ -489,7 +517,7 @@ func (s *Server) connect(w http.ResponseWriter, r *http.Request) {
 	room.peers[peer.uid] = peer
 	p := room.players[peer.uid]
 	if p == nil {
-		p = &Player{User: user(r), Health: 100, Ammo: 12, Weapon: "rifle", Weapons: map[string]int{"rifle": 12}, Grounded: true}
+		p = &Player{User: user(r), Health: 100, Ammo: 15, Weapon: "pistol", Weapons: map[string]int{"pistol": 15}, Grounded: true}
 		room.players[p.ID] = p
 	}
 	p.Connected = true
