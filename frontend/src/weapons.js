@@ -69,15 +69,16 @@ export function updateWeaponBar(inv, reloading = false) {
     const slot = document.querySelector(`.weapon-slot[data-slot="${i + 1}"]`);
     if (!slot) return;
     const owned = id in inv.weapons;
+    slot.hidden = !owned;
+    if (!owned) return;
     slot.classList.toggle('active', inv.active === id);
-    slot.classList.toggle('owned', owned);
-    slot.classList.toggle('locked', !owned);
+    slot.classList.add('owned');
+    slot.classList.remove('locked');
     const ammoEl = slot.querySelector('.weapon-ammo');
     const nameEl = slot.querySelector('.weapon-name');
     if (nameEl) nameEl.textContent = weaponShortName(id);
     if (ammoEl) {
-      if (!owned) ammoEl.textContent = '—';
-      else if (reloading && inv.active === id) ammoEl.textContent = '··';
+      if (reloading && inv.active === id) ammoEl.textContent = '··';
       else ammoEl.textContent = String(inv.weapons[id]).padStart(2, '0');
     }
   });
