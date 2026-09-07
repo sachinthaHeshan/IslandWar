@@ -21,17 +21,17 @@ services:
       dockerfile: server/Dockerfile
     restart: unless-stopped
     expose:
-      - "8080"
+      - "8201"
     environment:
       DATABASE_URL: postgres://islandwar:${POSTGRES_PASSWORD}@postgres:5432/islandwar?sslmode=disable
       APP_ORIGIN: ${GAME_ORIGIN:-https://island-war.orionlabs.lk}
       COOKIE_SECURE: "true"
-      ADDR: ":8080"
+      ADDR: ":8201"
     depends_on:
       postgres:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/api/health || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8201/api/health || exit 1"]
       interval: 5s
       timeout: 3s
       retries: 20
@@ -49,7 +49,7 @@ services:
       - traefik.http.routers.islandwar-api-secure.tls=true
       - traefik.http.routers.islandwar-api-secure.tls.certResolver=letsencrypt
       - traefik.http.routers.islandwar-api-secure.service=islandwar-api
-      - traefik.http.services.islandwar-api.loadbalancer.server.port=8080
+      - traefik.http.services.islandwar-api.loadbalancer.server.port=8201
   frontend:
     build:
       context: .

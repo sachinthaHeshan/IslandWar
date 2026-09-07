@@ -31,11 +31,11 @@ Open **http://localhost:8200**. The API is on **http://localhost:8201**. Product
 
 ### Dokploy + Cloudflare
 
-A 502 means Traefik cannot reach the container. Host ports 8200/8201 are only for local Docker. Inside the containers the frontend listens on **80** and the API on **8080**.
+A 502 means Traefik cannot reach the container. Inside the containers the frontend listens on **8200** and the API on **8201**.
 
 1. Cloudflare DNS: `A` records for `island-war` and `island-war-api` to the VPS IP. SSL/TLS mode **Full** (not Flexible).
 2. Dokploy Environment: `POSTGRES_PASSWORD`, `GAME_ORIGIN=https://island-war.orionlabs.lk`, `API_ORIGIN=https://island-war-api.orionlabs.lk`.
-3. Domains tab (if you add domains in the UI instead of compose labels): frontend service container port **8200**, API service container port **8080**.
+3. Domains tab (if you add domains in the UI instead of compose labels): frontend service container port **8200**, API service container port **8201**.
 4. Do not also create duplicate UI domains if the compose Traefik labels are present — pick one method.
 5. Redeploy after pulling this compose file. Traefik needs about 10 seconds for certificates.
 

@@ -10,5 +10,6 @@ RUN apk add --no-cache ca-certificates && adduser -D -u 10001 game
 WORKDIR /app
 COPY --from=build /islandwar /app/islandwar
 USER game
-EXPOSE 8080
+ENV ADDR=:8201
+EXPOSE 8201
 CMD ["/app/islandwar"]
