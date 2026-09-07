@@ -64,7 +64,7 @@
       "cooldown": 0.12,
       "reload": 1.8,
       "range": 130,
-      "fov": 34
+      "fov": 28
     },
     "sniper": {
       "name": "SR-5 LONGSHOT",

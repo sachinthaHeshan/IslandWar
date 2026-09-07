@@ -1,12 +1,27 @@
 <!doctype html>
-<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="theme-color" content="#132b29"><title>Island War — The Training Grounds</title></head><body>
+<html lang="en" class="booting"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="theme-color" content="#132b29"><title>Island War — The Training Grounds</title>
+<style>
+html{background:#132b29}body{margin:0;background:#132b29;overflow:hidden}
+html.booting body>*:not(#boot){visibility:hidden}
+#boot{position:fixed;inset:0;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;background:#132b29;color:#fffcec;font-family:system-ui,sans-serif}
+#boot .boot-mark{font-size:28px;color:#dbea92}
+#boot .boot-title{font-size:12px;font-weight:800;letter-spacing:4px}
+#boot .boot-bar{width:132px;height:2px;background:#dbea9228;overflow:hidden}
+#boot .boot-bar i{display:block;height:100%;width:38%;background:#dbea92;animation:boot-slide .9s ease-in-out infinite}
+#boot .boot-status{font-size:9px;letter-spacing:2.4px;opacity:.55}
+@keyframes boot-slide{0%{transform:translateX(-130%)}100%{transform:translateX(360%)}}
+html.ready #boot{opacity:0;pointer-events:none;transition:opacity .4s ease}
+</style>
+<script>setTimeout(function(){document.documentElement.classList.add('ready');document.documentElement.classList.remove('booting')},15000)</script>
+</head><body>
+<div id="boot" role="status" aria-live="polite"><span class="boot-mark">◈</span><span class="boot-title">ISLAND WAR</span><span class="boot-bar"><i></i></span><span class="boot-status">LOADING THE RANGE</span></div>
 <canvas id="game" aria-label="Third-person island shooting arena"></canvas>
 <div class="vignette"></div>
 <header><a class="brand" href="/">◈ <span>ISLAND<span class="light">WAR</span><small>THE TRAINING GROUNDS</small></span></a><div class="session"><i></i> SOLO PRACTICE <span> / </span> SECTOR 01</div><button id="sound" class="icon-button" title="Toggle sound">SOUND ON ↗</button></header>
 <section class="mission"><div class="eyebrow">FIELD EXERCISE / 001</div><h1>Make every<br>shot count<span>.</span></h1><p>A quiet island. A steady hand.<br>Clear the targets. Find your rhythm.</p><div class="mission-rule"></div><div class="objective"><span class="objective-icon">◎</span><div>PRECISION TRAINING<small>Hit all 8 targets to finish the round</small></div></div></section>
 <div class="topstats"><div><small>TARGETS</small><strong><span id="hits">00</span><em> / 08</em></strong></div><div><small>ACCURACY</small><strong id="accuracy">—</strong></div><div><small>TIME</small><strong id="timer">00:00</strong></div></div>
 <div id="weapon-bar" class="weapon-bar"><div class="weapon-slot owned active" data-slot="1"><kbd>1</kbd><span class="weapon-name">M9</span><span class="weapon-ammo">15</span></div><div class="weapon-slot locked" data-slot="2"><kbd>2</kbd><span class="weapon-name">AK-47</span><span class="weapon-ammo">—</span></div><div class="weapon-slot locked" data-slot="3"><kbd>3</kbd><span class="weapon-name">SR-5</span><span class="weapon-ammo">—</span></div><div class="weapon-slot locked" data-slot="4"><kbd>4</kbd><span class="weapon-name">RPG-7</span><span class="weapon-ammo">—</span></div></div>
-<div id="crosshair"><span></span></div><div id="scope-overlay" aria-hidden="true"><div class="scope-ring"></div><div class="scope-vignette"></div><div class="scope-reticle"><i></i><i></i></div><div id="scope-zoom"></div></div><div id="hitmarker">×</div><div id="toast">TARGET DOWN <b>+100</b></div>
+<div id="crosshair" aria-hidden="true"><div class="reticle"><i class="arm top"></i><i class="arm right"></i><i class="arm bottom"></i><i class="arm left"></i><span class="dot"></span><span class="ring"></span></div></div><div id="scope-overlay" aria-hidden="true"><div class="scope-ring"></div><div class="scope-vignette"></div><div class="scope-reticle"><span class="scope-dot"></span><i class="hair v"></i><i class="hair h"></i><i class="tick t1"></i><i class="tick t2"></i><i class="tick t3"></i><i class="tick b1"></i><i class="tick b2"></i><i class="tick b3"></i></div><div id="scope-zoom"></div></div><div id="hitmarker" aria-hidden="true"><i></i><i></i></div><div id="toast">TARGET DOWN <b>+100</b></div>
 <div class="location"><span>↗</span> NORTH SHORE <small>TRAINING ISLAND</small></div>
 <div id="start"><span class="live-dot"></span><span id="start-label">YOUR RANGE. YOUR PACE.</span><button id="play">ENTER THE RANGE <span>↗</span></button><small id="start-hint">Click to play · Headphones recommended</small></div>
 <div id="result" hidden><div class="eyebrow">EXERCISE COMPLETE</div><h2>Sharp shooting.</h2><p id="result-text"></p><button id="again">ANOTHER ROUND ↗</button></div>
