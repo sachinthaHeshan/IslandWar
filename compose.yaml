@@ -20,8 +20,10 @@ services:
       dockerfile: Dockerfile
     environment:
       DATABASE_URL: postgres://islandwar:${POSTGRES_PASSWORD}@postgres:5432/islandwar?sslmode=disable
-      APP_ORIGIN: ${GAME_ORIGIN:-http://localhost:8080}
-      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      APP_ORIGIN: ${GAME_ORIGIN:-https://island-war.orionlabs.lk}
+      COOKIE_SECURE: "true"
+    ports:
+      - "8201:8080"
     depends_on:
       postgres:
         condition: service_healthy
@@ -34,8 +36,10 @@ services:
     build:
       context: .
       dockerfile: frontend/Dockerfile
+      args:
+        VITE_API_ORIGIN: ${API_ORIGIN:-https://island-war-api.orionlabs.lk}
     ports:
-      - "8080:80"
+      - "8200:80"
     depends_on:
       backend:
         condition: service_healthy

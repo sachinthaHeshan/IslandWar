@@ -5,6 +5,8 @@ RUN npm ci
 COPY frontend/index.html frontend/vite.config.js ./
 COPY frontend/src ./src
 COPY server/arena.json /build/server/arena.json
+ARG VITE_API_ORIGIN=https://island-war-api.orionlabs.lk
+ENV VITE_API_ORIGIN=$VITE_API_ORIGIN
 RUN npm run build
 
 FROM nginx:1.27-alpine

@@ -27,9 +27,9 @@ cp .env.example .env
 docker compose up --build
 ```
 
-Open **http://localhost:8080**. Nginx serves the built frontend and proxies `/api` (including WebSockets) to the Go backend. PostgreSQL uses a persistent Docker volume and is bound to localhost. `docker compose down` stops the services and preserves the database volume. The root `Dockerfile` still builds a single image that serves both from Go if you want that layout.
+Open **https://island-war.orionlabs.lk**. Nginx serves the built frontend; the browser calls **https://island-war-api.orionlabs.lk** for `/api` and WebSockets. Locally those map to ports **8200** and **8201**. Point DNS (and TLS termination) at those ports. PostgreSQL uses a persistent Docker volume and is bound to localhost. `docker compose down` stops the services and preserves the database volume. The root `Dockerfile` still builds a single image that serves both from Go if you want that layout.
 
-For another device, set `GAME_ORIGIN` in `.env` to the exact URL everyone will use, such as `http://192.168.1.20:8080`, then restart the game container. For local Vite development, `APP_ORIGINS` accepts a comma-separated list of exact browser origins. Only configured browser origins are accepted. Internet hosting should use HTTPS and `COOKIE_SECURE=true`; provide a PostgreSQL connection with the appropriate TLS settings. The server supports WebSocket upgrades and needs a persistent Go process, so a static frontend host alone is insufficient.
+Set `GAME_ORIGIN` to the exact frontend URL (`https://island-war.orionlabs.lk`) and `API_ORIGIN` to the exact API URL (`https://island-war-api.orionlabs.lk`), then rebuild so Vite bakes the API host into the client. For local Vite development, `APP_ORIGINS` accepts a comma-separated list of exact browser origins. Only configured browser origins are accepted. Internet hosting should use HTTPS and `COOKIE_SECURE=true`; provide a PostgreSQL connection with the appropriate TLS settings. The server supports WebSocket upgrades and needs a persistent Go process, so a static frontend host alone is insufficient.
 
 ## Local development
 

@@ -130,11 +130,22 @@ func (s *Server) routes() http.Handler {
 		if strings.HasPrefix(r.URL.Path, "/api/") {
 			w.Header().Set("Cache-Control", "no-store")
 		}
-		if r.Method != "GET" && r.Method != "HEAD" && r.Method != "OPTIONS" {
-			if origin := r.Header.Get("Origin"); origin != "" && !s.originAllowed(origin) {
+		if origin := r.Header.Get("Origin"); origin != "" {
+			if !s.originAllowed(origin) {
 				fail(w, 403, "Origin not allowed")
 				return
 			}
+			w.Header().Set("Access-Control-Allow-Origin", origin)
+			w.Header().Set("Access-Control-Allow-Credentials", "true")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+			w.Header().Set("Vary", "Origin")
+		}
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		if r.Method != "GET" && r.Method != "HEAD" {
 			if r.Header.Get("Sec-Fetch-Site") == "cross-site" {
 				fail(w, 403, "Cross-site request rejected")
 				return

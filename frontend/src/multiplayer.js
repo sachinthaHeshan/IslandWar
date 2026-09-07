@@ -1,5 +1,11 @@
 const $ = id => document.getElementById(id);
 const escape = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const API_ORIGIN = String(import.meta.env.VITE_API_ORIGIN || '').replace(/\/$/, '');
+const apiUrl = path => `${API_ORIGIN}/api${path}`;
+const wsUrl = path => {
+  const base = API_ORIGIN ? API_ORIGIN.replace(/^http/i, 'ws') : `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}`;
+  return `${base}/api${path}`;
+};
 export function createMultiplayer(hooks) {
   const state = { user: null, groups: [], selected: null, groupId: null, socket: null, snapshot: null, connected: false, visible: false };
   let authMode = 'login', polling = false, busy = false, searchVersion = 0;
@@ -14,7 +20,7 @@ export function createMultiplayer(hooks) {
     <div id="network-hud" hidden><div class="eyebrow">FREE-FOR-ALL / <span id="net-state">LOBBY</span></div><div id="scoreboard"></div><p id="net-message"></p><button id="net-lobby" class="mp-secondary">GROUP LOBBY · ESC</button></div>
   `);
   async function api(path, data) {
-    const response = await fetch('/api' + path, { method: data === undefined ? 'GET' : 'POST', headers: data === undefined ? {} : {'Content-Type':'application/json'}, body: data === undefined ? undefined : JSON.stringify(data) });
+    const response = await fetch(apiUrl(path), { method: data === undefined ? 'GET' : 'POST', credentials: 'include', headers: data === undefined ? {} : {'Content-Type':'application/json'}, body: data === undefined ? undefined : JSON.stringify(data) });
     let payload; try { payload = await response.json(); } catch { throw new Error('Backend unavailable. Start the Go server and PostgreSQL.'); }
     if (!response.ok) {
       if(response.status===401 && state.user && !['/login','/register'].includes(path)){disconnect();state.user=null;state.groups=[];state.selected=null;$('auth-panel').hidden=false;$('account-panel').hidden=true;}
@@ -31,7 +37,7 @@ export function createMultiplayer(hooks) {
     if (state.connected && state.snapshot?.groupId === group.id) return;
     const old = state.socket; state.socket = null; old?.close(); state.connected = false; state.snapshot = null;
     state.groupId = group.id;
-    const ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/api/groups/${group.id}/ws`); state.socket = ws;
+    const ws = new WebSocket(wsUrl(`/groups/${group.id}/ws`)); state.socket = ws;
     notice('Connecting to group…');
     ws.onopen = () => { if(state.socket!==ws)return;state.connected = true; notice('Connected. The group owner can start when 2–8 players are here.'); renderDetail(); };
     ws.onmessage = event => {
