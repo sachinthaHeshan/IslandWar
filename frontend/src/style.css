@@ -33,7 +33,12 @@ html.ready #boot{opacity:0;pointer-events:none;transition:opacity .4s ease}*{box
 .touch-btn[data-action=sprint]{font-size:7px;letter-spacing:.4px}
 .touch-btn[data-action=aim]{font-size:8px;letter-spacing:.5px}
 .touch-btn.touch-fire .touch-bullet-icon{width:30px;height:30px;display:block;filter:drop-shadow(0 0 6px rgba(222,252,128,.45))}
+.touch-fire-spinner{display:none;width:28px;height:28px;border:2px solid rgba(222,252,128,.22);border-top-color:#defc80;border-radius:50%;animation:fire-spin .65s linear infinite}
+.touch-btn.touch-fire.reloading .touch-bullet-icon{display:none}
+.touch-btn.touch-fire.reloading .touch-fire-spinner{display:block}
+.touch-btn.touch-fire.reloading{border-color:rgba(222,252,128,.55);opacity:.9;pointer-events:none}
 .touch-btn.touch-fire.active{border-color:rgba(222,252,128,.85);background:rgba(222,252,128,.1);box-shadow:0 0 18px rgba(222,252,128,.28),inset 0 0 0 1px rgba(222,252,128,.25)}
+@keyframes fire-spin{to{transform:rotate(360deg)}}
 .touch-btn[data-action=zoom-in],.touch-btn[data-action=zoom-out]{font-size:16px;opacity:.85}
 #touch-controls.editing .touch-widget{outline:1px dashed rgba(219,234,146,.55);outline-offset:4px;border-radius:12px}
 #touch-controls.editing .touch-widget.dragging{outline-color:#defc80;outline-width:2px;z-index:6}
