@@ -37,7 +37,9 @@ type Input struct {
 	Yaw    float64 `json:"yaw"`
 	Pitch  float64 `json:"pitch"`
 	Sprint bool    `json:"sprint"`
+	Crawl  bool    `json:"crawl"`
 	Aim    bool    `json:"aim"`
+	Weapon string  `json:"weapon,omitempty"`
 }
 type Player struct {
 	User
@@ -52,8 +54,10 @@ type Player struct {
 	Grounded       bool    `json:"grounded"`
 	Aiming         bool    `json:"aiming"`
 	Sprinting      bool    `json:"sprinting"`
-	Weapon         string  `json:"weapon"`
-	Health         int     `json:"health"`
+	Crawling       bool    `json:"crawling"`
+	Weapon         string         `json:"weapon"`
+	Weapons        map[string]int `json:"weapons"`
+	Health         int            `json:"health"`
 	Ammo           int     `json:"ammo"`
 	Kills          int     `json:"kills"`
 	Deaths         int     `json:"deaths"`
@@ -123,8 +127,10 @@ func (r *Room) spawn(p *Player, now time.Time) {
 	bestDistance := -1.0
 	for i := 0; i < 8; i++ {
 		angle := float64(i) * math.Pi / 4
-		candidate := Vec{math.Sin(angle) * 62, 0, math.Cos(angle)*62 + arena.CenterZ}
-		if !canMove(candidate.X,candidate.Z){continue}
+		candidate := Vec{math.Sin(angle) * 85, 0, math.Cos(angle)*85 + arena.CenterZ}
+		if !canMove(candidate.X, candidate.Z, groundHeight(candidate.X, candidate.Z)) {
+			continue
+		}
 		distance := 1000.0
 		for _, other := range r.players {
 			if other.ID != p.ID && other.Health > 0 {
@@ -139,11 +145,12 @@ func (r *Room) spawn(p *Player, now time.Time) {
 	p.X = best.X
 	p.Z = best.Z
 	p.Y = groundHeight(p.X,p.Z)
-	p.VX=0;p.VY=0;p.VZ=0;p.Grounded=true;p.Aiming=false;p.Sprinting=false;p.jump=false
+	p.VX=0;p.VY=0;p.VZ=0;p.Grounded=true;p.Aiming=false;p.Sprinting=false;p.Crawling=false;p.jump=false
 	p.Yaw = math.Atan2(p.X, p.Z+8)
 	p.Health = 100
-	p.Weapon = "rifle"
-	p.Ammo = weaponFor(p).Magazine
+ p.Weapon = "rifle"
+ p.Weapons = map[string]int{"rifle": arena.Weapons["rifle"].Magazine}
+ p.Ammo = p.Weapons["rifle"]
 	p.RespawnAt = 0
 	p.ProtectedUntil = now.Add(2 * time.Second).UnixMilli()
 	p.Reloading = false
@@ -199,6 +206,10 @@ func (r *Room) step(now time.Time, dt float64) bool {
 		}
 		if p.Reloading && !now.Before(p.reloadEnd) {
 			p.Ammo = weaponFor(p).Magazine
+			if p.Weapons == nil {
+				p.Weapons = map[string]int{}
+			}
+			p.Weapons[p.Weapon] = p.Ammo
 			p.Reloading = false
 		}
 		if p.reload && !p.Reloading && p.Ammo < weaponFor(p).Magazine {
@@ -238,6 +249,18 @@ func rayBox(origin, dir, min, max Vec) float64 {
 	}
 	return near
 }
+func playerHitHeight(p *Player) float64 {
+	if p.Crawling {
+		return 1.05
+	}
+	return 2.35
+}
+func playerEyeHeight(p *Player) float64 {
+	if p.Crawling {
+		return 0.95
+	}
+	return 2.4
+}
 func (r *Room) trace(origin, dir Vec, shooter int64, now time.Time) (float64, *Player) {
 	maxRange:=240.0
 	if p:=r.players[shooter];p!=nil{maxRange=weaponFor(p).Range}
@@ -254,7 +277,7 @@ func (r *Room) trace(origin, dir Vec, shooter int64, now time.Time) (float64, *P
 		if p.ID == shooter || p.Health <= 0 || !p.Connected || now.UnixMilli() < p.ProtectedUntil {
 			continue
 		}
-		d := rayBox(origin, dir, Vec{p.X - .42, p.Y, p.Z - .42}, Vec{p.X + .42, p.Y+2.35, p.Z + .42})
+		d := rayBox(origin, dir, Vec{p.X - .42, p.Y, p.Z - .42}, Vec{p.X + .42, p.Y + playerHitHeight(p), p.Z + .42})
 		if d < closest {
 			closest = d
 			victim = p
@@ -273,15 +296,25 @@ func (r *Room) fire(p *Player, now time.Time) {
 	}
 	p.lastShot = now
 	p.Ammo--
+	if p.Weapons == nil {
+		p.Weapons = map[string]int{}
+	}
+	p.Weapons[p.Weapon] = p.Ammo
 	p.ProtectedUntil = 0
 	yaw, pitch := p.input.Yaw, p.input.Pitch
 	direction := Vec{-math.Sin(yaw) * math.Cos(pitch), math.Sin(pitch), -math.Cos(yaw) * math.Cos(pitch)}
 	right := Vec{math.Cos(yaw), 0, -math.Sin(yaw)}
-	camera := Vec{p.X, p.Y+2.4, p.Z}.add(direction.mul(-5.4)).add(right.mul(.85))
-	if p.input.Aim { camera=Vec{p.X,p.Y+1.95,p.Z} }
+	camera := Vec{p.X, p.Y + playerEyeHeight(p), p.Z}.add(direction.mul(-5.4)).add(right.mul(.85))
+	if p.input.Aim {
+		camera = Vec{p.X, p.Y + playerEyeHeight(p) - .45, p.Z}
+	}
 	aimDistance, _ := r.trace(camera, direction, p.ID, now)
 	aim := camera.add(direction.mul(aimDistance))
-	muzzle := Vec{p.X, p.Y+1.365, p.Z}.add(right.mul(.44)).add(Vec{-math.Sin(yaw), 0, -math.Cos(yaw)}.mul(1.41))
+	muzzleY := 1.365
+	if p.Crawling {
+		muzzleY = 0.72
+	}
+	muzzle := Vec{p.X, p.Y + muzzleY, p.Z}.add(right.mul(.44)).add(Vec{-math.Sin(yaw), 0, -math.Cos(yaw)}.mul(1.41))
 	if p.input.Aim { muzzle=camera.add(direction.mul(.3)) }
 	shotDir := aim.sub(muzzle).unit()
 	distance, victim := r.trace(muzzle, shotDir, p.ID, now)
@@ -289,7 +322,7 @@ func (r *Room) fire(p *Player, now time.Time) {
 	if victim != nil {
 		event.Victim = victim.ID
 		event.Damage=w.Damage
-		if p.Weapon=="sniper"&&event.End.Y>=victim.Y+1.8{event.Damage=100;event.Headshot=true}
+		if p.Weapon=="sniper"&&event.End.Y>=victim.Y+playerHitHeight(victim)*.78{event.Damage=100;event.Headshot=true}
 		victim.Health -= event.Damage
 		if victim.Health <= 0 {
 			victim.Health = 0
@@ -456,7 +489,7 @@ func (s *Server) connect(w http.ResponseWriter, r *http.Request) {
 	room.peers[peer.uid] = peer
 	p := room.players[peer.uid]
 	if p == nil {
-		p = &Player{User: user(r), Health: 100, Ammo: 12,Weapon:"rifle",Grounded:true}
+		p = &Player{User: user(r), Health: 100, Ammo: 12, Weapon: "rifle", Weapons: map[string]int{"rifle": 12}, Grounded: true}
 		room.players[p.ID] = p
 	}
 	p.Connected = true
@@ -535,7 +568,11 @@ func (s *Server) connect(w http.ResponseWriter, r *http.Request) {
 			case "jump":
 				p.jump = true
 			case "interact":
-				room.pickup(p,now)
+				room.pickup(p, now)
+			case "switch":
+				if in.Weapon != "" {
+					p.switchTo(in.Weapon)
+				}
 			}
 		}
 		s.hub.mu.Unlock()

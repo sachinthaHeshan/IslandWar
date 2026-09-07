@@ -43,9 +43,9 @@ func TestAuthoritativeCombat(t *testing.T) {
 func TestCoverAndProtection(t *testing.T) {
 	r := testRoom()
 	now := time.Now()
-	p := &Player{User: User{ID: 2}, X: -9, Z: -10, Health: 100, Connected: true}
+	p := &Player{User: User{ID: 2}, X: -12.3, Z: -10, Health: 100, Connected: true}
 	r.players[2] = p
-	_, victim := r.trace(Vec{-9, 1, 0}, Vec{0, 0, -1}, 1, now)
+	_, victim := r.trace(Vec{-12.3, 1, 0}, Vec{0, 0, -1}, 1, now)
 	if victim != nil {
 		t.Fatal("ray shot through crate")
 	}
@@ -91,7 +91,7 @@ func TestMovementReloadAndTimeout(t *testing.T) {
 	if r.step(now, .05) {
 		t.Fatal("round completed twice")
 	}
-	if canMove(25, 0) || canMove(-9, -6) {
+	if canMove(145, 0, 0) || canMove(-12.3, -8.2, 0) {
 		t.Fatal("island or crate collision missing")
 	}
 }
