@@ -1,0 +1,30 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: islandwar
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Copy .env.example to .env and set POSTGRES_PASSWORD}
+      POSTGRES_DB: islandwar
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U islandwar -d islandwar"]
+      interval: 3s
+      timeout: 3s
+      retries: 15
+  game:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      DATABASE_URL: postgres://islandwar:${POSTGRES_PASSWORD}@postgres:5432/islandwar?sslmode=disable
+      APP_ORIGIN: ${GAME_ORIGIN:-http://localhost:8080}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      STATIC_DIR: /app/dist
+    depends_on:
+      postgres:
+        condition: service_healthy
+volumes:
+  pgdata:
