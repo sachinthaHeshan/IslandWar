@@ -337,6 +337,9 @@ let yaw = 0,
   flashTime = 0,
   hitTime = 0,
   muted = false;
+try {
+  muted = localStorage.getItem("island-war-muted") === "1";
+} catch {}
 const DEFAULT_FOV = 55;
 const scopeZoom = { sniper: weaponDef("sniper").fov };
 const focusZoom = { ak47: weaponDef("ak47").fov };
@@ -729,8 +732,12 @@ $("again").onclick = () => {
 };
 $("sound").onclick = () => {
   muted = !muted;
+  try {
+    localStorage.setItem("island-war-muted", muted ? "1" : "0");
+  } catch {}
   $("sound").textContent = muted ? "SOUND OFF ↗" : "SOUND ON ↗";
 };
+if (muted) $("sound").textContent = "SOUND OFF ↗";
 document.addEventListener("pointerlockchange", () => {
   if (touch?.enabled) return;
   active = document.pointerLockElement === canvas;
@@ -1082,7 +1089,6 @@ const multiplayer = createMultiplayer({
     targets.forEach((t) => (t.group.visible = false));
     $("start").style.display =
       active || snapshot.state !== "running" ? "none" : "flex";
-    $("start-label").textContent = "FREE-FOR-ALL · MATCH IS LIVE";
     $("play").innerHTML = "DEPLOY TO ISLAND <span>↗</span>";
     if (!document.getElementById("net-kills"))
       document.querySelector(".topstats").innerHTML =
@@ -1231,7 +1237,6 @@ const multiplayer = createMultiplayer({
     player.visible = true;
     document.querySelector(".topstats").innerHTML = originalStats;
     $("toast").innerHTML = originalToast;
-    $("start-label").textContent = "YOUR RANGE. YOUR PACE.";
     $("play").innerHTML = "ENTER THE RANGE <span>↗</span>";
     $("start").style.display = "flex";
     document.querySelector(".health span").textContent = "100";
@@ -1328,13 +1333,48 @@ const touch = createTouchControls($("touch-controls"), $("touch-settings"), {
   onReload: tryReload,
   onPause: pauseGame,
   onEditStart() {},
-  onEditEnd() {},
+  onEditEnd() {
+    openGameSettings("controls");
+  },
 });
+function settingsView(id) {
+  return $(id);
+}
+function showSettingsView(view) {
+  settingsView("settings-menu").hidden = view !== "menu";
+  settingsView("settings-controls").hidden = view !== "controls";
+  settingsView("settings-sound").hidden = view !== "sound";
+}
+function openGameSettings(view = "menu") {
+  $("touch-settings").hidden = false;
+  document.body.classList.add("touch-settings-open");
+  showSettingsView(view);
+}
+function closeGameSettings() {
+  touch.closeSettings();
+  $("touch-settings").hidden = true;
+  document.body.classList.remove("touch-settings-open");
+  showSettingsView("menu");
+}
+$("start-settings").onclick = () => openGameSettings("menu");
+$("open-control-settings").onclick = () => showSettingsView("controls");
+$("open-sound-settings").onclick = () => showSettingsView("sound");
+$("touch-settings-close").onclick = () => {
+  if (touch.isEditing()) return;
+  if (!settingsView("settings-menu").hidden) closeGameSettings();
+  else showSettingsView("menu");
+};
+$("touch-settings")
+  .querySelector(".touch-settings-backdrop")
+  ?.addEventListener("click", () => {
+    if (touch.isEditing()) return;
+    if (!settingsView("settings-menu").hidden) closeGameSettings();
+    else showSettingsView("menu");
+  });
+$("start-multiplayer").onclick = () => multiplayer.show();
 if (touch.enabled) {
   $("start-hint").textContent =
     "Tap play to start · Configure controls in settings first";
-  $("start-settings").hidden = false;
-  $("start-settings").onclick = () => touch.openSettings();
   $("interact-prompt")?.addEventListener("click", (e) => {
     e.stopPropagation();
     tryPickup();

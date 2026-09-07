@@ -52,7 +52,6 @@ export function createTouchControls(root, settingsRoot, hooks) {
 
   if (!state.enabled) {
     root.hidden = true;
-    settingsRoot.hidden = true;
     return {
       enabled: false,
       state,
@@ -282,7 +281,6 @@ export function createTouchControls(root, settingsRoot, hooks) {
   const floatingDoneBtn = root.querySelector('#touch-edit-floating-done');
   const resetBtn = settingsRoot.querySelector('#touch-reset-layout');
   const closeBtn = settingsRoot.querySelector('#touch-settings-close');
-  const backdrop = settingsRoot.querySelector('.touch-settings-backdrop');
 
   function setEditing(on) {
     editing = on;
@@ -311,15 +309,16 @@ export function createTouchControls(root, settingsRoot, hooks) {
   }
 
   editBtn?.addEventListener('click', () => setEditing(true));
-  doneBtn?.addEventListener('click', closeSettings);
-  floatingDoneBtn?.addEventListener('click', closeSettings);
+  doneBtn?.addEventListener('click', () => setEditing(false));
+  floatingDoneBtn?.addEventListener('click', () => setEditing(false));
   resetBtn?.addEventListener('click', () => {
     layout = structuredClone(DEFAULT_LAYOUT);
     applyLayout();
     saveLayout(layout);
   });
-  closeBtn?.addEventListener('click', closeSettings);
-  backdrop?.addEventListener('click', closeSettings);
+  closeBtn?.addEventListener('click', () => {
+    if (editing) setEditing(false);
+  });
 
   return {
     enabled: true,
