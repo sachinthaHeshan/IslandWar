@@ -223,7 +223,7 @@ export function createTouchControls(root, settingsRoot, hooks) {
   });
 
   buttons.get('reload')?.addEventListener('click', (e) => {
-    if (editing) return;
+    if (editing || buttons.get('reload')?.classList.contains('reloading-active')) return;
     e.preventDefault();
     hooks.onReload?.();
   });

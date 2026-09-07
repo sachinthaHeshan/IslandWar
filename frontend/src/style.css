@@ -29,15 +29,44 @@ html.ready #boot{opacity:0;pointer-events:none;transition:opacity .4s ease}*{box
 .touch-btn:active{transform:scale(.94)}
 .touch-btn{border:1px solid rgba(227,237,206,.35);background:rgba(23,53,44,.78);color:#eaf2dd;font-size:9px;font-weight:700;letter-spacing:.8px;padding:0;border-radius:50%;width:52px;height:52px;min-width:52px;min-height:52px;display:flex;align-items:center;justify-content:center;touch-action:none;user-select:none;aspect-ratio:1}
 .touch-btn.active{border-color:#dbea92;background:rgba(219,234,146,.22);color:#defc80}
-.touch-btn.touch-fire{width:72px;height:72px;min-width:72px;min-height:72px;border-radius:50%;background:transparent;border:2px solid rgba(222,252,128,.42);box-shadow:inset 0 0 0 1px rgba(222,252,128,.12);color:#defc80}
-.touch-btn[data-action=sprint]{font-size:7px;letter-spacing:.4px}
-.touch-btn[data-action=aim]{font-size:8px;letter-spacing:.5px}
-.touch-btn.touch-fire .touch-bullet-icon{width:30px;height:30px;display:block;filter:drop-shadow(0 0 6px rgba(222,252,128,.45))}
+.touch-btn.touch-fire{width:72px;height:72px;min-width:72px;min-height:72px;border-radius:50%;background:transparent;border:2px solid rgba(222,252,128,.42);box-shadow:inset 0 0 0 1px rgba(222,252,128,.12);--bullet-body:#c8e86a;--bullet-tip:#f3ffaa;--bullet-rim:rgba(243,255,170,.45);color:var(--bullet-body)}
+.touch-btn[data-action=sprint]{--run-color:#c8e86a;--run-highlight:#f3ffaa}
+.touch-btn[data-action=sprint].active{--run-color:#defc80;--run-highlight:#fdffd0}
+.touch-btn-icon{padding:0}
+.touch-run-icon{width:28px;height:28px;display:block;filter:drop-shadow(0 0 5px rgba(222,252,128,.35))}
+.touch-run-icon .run-head{fill:var(--run-highlight)}
+.touch-run-icon .run-body,.touch-run-icon .run-leg-front,.touch-run-icon .run-leg-back,.touch-run-icon .run-arm-back,.touch-run-icon .run-arm-front{fill:none;stroke:var(--run-color);stroke-width:4.6;stroke-linecap:round;stroke-linejoin:round}
+.touch-btn[data-action=sprint].active .touch-run-icon{filter:drop-shadow(0 0 8px rgba(222,252,128,.55))}
+.touch-btn[data-action=jump]{--jump-color:#c8e86a;--jump-highlight:#f3ffaa}
+.touch-btn[data-action=jump].active{--jump-color:#defc80;--jump-highlight:#fdffd0}
+.touch-jump-icon{width:28px;height:28px;display:block;filter:drop-shadow(0 0 5px rgba(222,252,128,.35))}
+.touch-jump-icon .jump-head{fill:var(--jump-highlight)}
+.touch-jump-icon .jump-body,.touch-jump-icon .jump-arm-left,.touch-jump-icon .jump-arm-right,.touch-jump-icon .jump-leg-left,.touch-jump-icon .jump-leg-right{fill:none;stroke:var(--jump-color);stroke-width:4.6;stroke-linecap:round;stroke-linejoin:round}
+.touch-btn[data-action=jump].active .touch-jump-icon{filter:drop-shadow(0 0 8px rgba(222,252,128,.55))}
+.touch-btn[data-action=aim]{--aim-color:#c8e86a;--aim-highlight:#f3ffaa}
+.touch-btn[data-action=aim].active{--aim-color:#defc80;--aim-highlight:#fdffd0}
+.touch-aim-icon{width:28px;height:28px;display:block;filter:drop-shadow(0 0 5px rgba(222,252,128,.35))}
+.touch-aim-icon .aim-ring{fill:none;stroke:var(--aim-color);stroke-width:2.8}
+.touch-aim-icon .aim-line{fill:none;stroke:var(--aim-highlight);stroke-width:3.8;stroke-linecap:round}
+.touch-btn[data-action=aim].active .touch-aim-icon{filter:drop-shadow(0 0 8px rgba(222,252,128,.55))}
+.touch-btn[data-action=reload]{--reload-color:#c8e86a;--reload-highlight:#f3ffaa}
+.touch-btn[data-action=reload].active,.touch-btn[data-action=reload]:active{--reload-color:#defc80;--reload-highlight:#fdffd0}
+.touch-reload-icon{width:28px;height:28px;display:block;filter:drop-shadow(0 0 5px rgba(222,252,128,.35))}
+.touch-reload-icon .reload-arc{fill:none;stroke:var(--reload-color);stroke-width:4.8;stroke-linecap:round}
+.touch-reload-icon .reload-head{fill:none;stroke:var(--reload-highlight);stroke-width:4.8;stroke-linecap:round;stroke-linejoin:round}
+.touch-btn[data-action=reload].active .touch-reload-icon,.touch-btn[data-action=reload]:active .touch-reload-icon{filter:drop-shadow(0 0 8px rgba(222,252,128,.55))}
+.touch-btn[data-action=reload].reloading-active .touch-reload-icon{animation:fire-spin .65s linear infinite;filter:drop-shadow(0 0 8px rgba(222,252,128,.55))}
+.touch-btn[data-action=reload].reloading-active{--reload-color:#defc80;--reload-highlight:#fdffd0;pointer-events:none;opacity:.9}
+.touch-btn.touch-fire .touch-bullet-icon{width:26px;height:auto;display:block;filter:drop-shadow(0 0 7px rgba(222,252,128,.42))}
+.touch-btn.touch-fire .touch-bullet-icon .bullet-body{fill:var(--bullet-body)}
+.touch-btn.touch-fire .touch-bullet-icon .bullet-tip{fill:var(--bullet-tip)}
+.touch-btn.touch-fire .touch-bullet-icon .bullet-rim{fill:none;stroke:var(--bullet-rim);stroke-width:1.6;stroke-linecap:round;opacity:.85}
 .touch-fire-spinner{display:none;width:28px;height:28px;border:2px solid rgba(222,252,128,.22);border-top-color:#defc80;border-radius:50%;animation:fire-spin .65s linear infinite}
 .touch-btn.touch-fire.reloading .touch-bullet-icon{display:none}
 .touch-btn.touch-fire.reloading .touch-fire-spinner{display:block}
 .touch-btn.touch-fire.reloading{border-color:rgba(222,252,128,.55);opacity:.9;pointer-events:none}
-.touch-btn.touch-fire.active{border-color:rgba(222,252,128,.85);background:rgba(222,252,128,.1);box-shadow:0 0 18px rgba(222,252,128,.28),inset 0 0 0 1px rgba(222,252,128,.25)}
+.touch-btn.touch-fire.active{--bullet-body:#defc80;--bullet-tip:#fdffd0;--bullet-rim:rgba(253,255,208,.65);border-color:rgba(222,252,128,.85);background:rgba(222,252,128,.1);box-shadow:0 0 18px rgba(222,252,128,.28),inset 0 0 0 1px rgba(222,252,128,.25)}
+.touch-btn.touch-fire.active .touch-bullet-icon{filter:drop-shadow(0 0 10px rgba(222,252,128,.62))}
 @keyframes fire-spin{to{transform:rotate(360deg)}}
 .touch-btn[data-action=zoom-in],.touch-btn[data-action=zoom-out]{font-size:16px;opacity:.85}
 #touch-controls.editing .touch-widget{outline:1px dashed rgba(219,234,146,.55);outline-offset:4px;border-radius:12px}
@@ -89,4 +118,4 @@ html.touch-device body.playing .weapon-ammo{font-size:18px}
 html.touch-device body.playing #start{bottom:max(110px,env(safe-area-inset-bottom))}
 html.touch-device #game{touch-action:none}
 @media(max-width:650px){.weapon-bar{pointer-events:auto}}
-@media(max-width:420px){.touch-move-base{width:98px;height:98px}.touch-move-knob{width:40px;height:40px;margin:-20px 0 0 -20px}.touch-btn{width:46px;height:46px;min-width:46px;min-height:46px;font-size:8px}.touch-btn.touch-fire{width:64px;height:64px;min-width:64px;min-height:64px}.touch-btn.touch-fire .touch-bullet-icon{width:26px;height:26px}.touch-look{width:62%}}
+@media(max-width:420px){.touch-move-base{width:98px;height:98px}.touch-move-knob{width:40px;height:40px;margin:-20px 0 0 -20px}.touch-btn{width:46px;height:46px;min-width:46px;min-height:46px;font-size:8px}.touch-btn.touch-fire{width:64px;height:64px;min-width:64px;min-height:64px}.touch-btn.touch-fire .touch-bullet-icon{width:22px}.touch-run-icon{width:24px;height:24px}.touch-jump-icon{width:24px;height:24px}.touch-aim-icon{width:24px;height:24px}.touch-reload-icon{width:24px;height:24px}.touch-look{width:62%}}
