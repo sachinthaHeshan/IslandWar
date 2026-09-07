@@ -58,7 +58,7 @@ services:
         VITE_API_ORIGIN: ${API_ORIGIN:-https://island-war-api.orionlabs.lk}
     restart: unless-stopped
     expose:
-      - "80"
+      - "8200"
     depends_on:
       - backend
     networks:
@@ -74,7 +74,7 @@ services:
       - traefik.http.routers.islandwar-web-secure.tls=true
       - traefik.http.routers.islandwar-web-secure.tls.certResolver=letsencrypt
       - traefik.http.routers.islandwar-web-secure.service=islandwar-web
-      - traefik.http.services.islandwar-web.loadbalancer.server.port=80
+      - traefik.http.services.islandwar-web.loadbalancer.server.port=8200
 volumes:
   pgdata:
 networks:
