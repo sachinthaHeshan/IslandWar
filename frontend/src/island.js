@@ -320,14 +320,15 @@ export function buildIsland(scene) {
     chests.set(l.id, { root, lid, gun, beacon, marker, prompt, tag, weapon: l.weapon, opened: 0, readyAt: 0, gunBaseY: .43 });
   }
 
-  function update(time, dt, body, loot, now) {
+  function update(time, dt, body, loot, now, { canPickup, useCenterPrompt = false } = {}) {
     clockUniform.value = time;
     for (const [id, c] of chests) {
       c.readyAt = loot?.get(id) || 0;
       const empty = c.readyAt > now;
       const near = body && Math.hypot(body.x - c.root.position.x, body.z - c.root.position.z) < PICKUP_RANGE
         && Math.abs(body.y - c.root.position.y) < 2.5;
-      const shouldOpen = near && !empty;
+      const pickupable = !canPickup || canPickup(c.weapon);
+      const shouldOpen = near && !empty && pickupable;
       c.opened = THREE.MathUtils.damp(c.opened, shouldOpen ? 1 : 0, 12, dt);
       c.lid.rotation.x = -c.opened * 1.85;
       c.gun.visible = !empty;
@@ -337,7 +338,7 @@ export function buildIsland(scene) {
       c.beacon.visible = !empty;
       c.marker.visible = !empty && !near;
       c.tag.visible = !empty && c.opened > .35;
-      c.prompt.visible = shouldOpen && c.opened > .25;
+      c.prompt.visible = shouldOpen && c.opened > .25 && !useCenterPrompt;
       if (c.prompt.visible) {
         c.prompt.material.opacity = .92 + Math.sin(time * 4 + id) * .08;
         c.prompt.position.y = 2.45 + Math.sin(time * 3 + id) * .05;
