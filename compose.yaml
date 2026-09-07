@@ -1,12 +1,11 @@
 services:
   postgres:
     image: postgres:17-alpine
+    restart: unless-stopped
     environment:
       POSTGRES_USER: islandwar
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Copy .env.example to .env and set POSTGRES_PASSWORD}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in Dokploy Environment or .env}
       POSTGRES_DB: islandwar
-    ports:
-      - "127.0.0.1:5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -14,34 +13,70 @@ services:
       interval: 3s
       timeout: 3s
       retries: 15
+    networks:
+      - dokploy-network
   backend:
     build:
       context: ./server
       dockerfile: Dockerfile
+    restart: unless-stopped
+    expose:
+      - "8080"
     environment:
       DATABASE_URL: postgres://islandwar:${POSTGRES_PASSWORD}@postgres:5432/islandwar?sslmode=disable
       APP_ORIGIN: ${GAME_ORIGIN:-https://island-war.orionlabs.lk}
       COOKIE_SECURE: "true"
-    ports:
-      - "8201:8080"
+      ADDR: ":8080"
     depends_on:
       postgres:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/api/health || exit 1"]
-      interval: 3s
+      interval: 5s
       timeout: 3s
       retries: 20
+      start_period: 20s
+    networks:
+      - dokploy-network
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=dokploy-network
+      - traefik.http.routers.islandwar-api.rule=Host(`island-war-api.orionlabs.lk`)
+      - traefik.http.routers.islandwar-api.entrypoints=web
+      - traefik.http.routers.islandwar-api.service=islandwar-api
+      - traefik.http.routers.islandwar-api-secure.rule=Host(`island-war-api.orionlabs.lk`)
+      - traefik.http.routers.islandwar-api-secure.entrypoints=websecure
+      - traefik.http.routers.islandwar-api-secure.tls=true
+      - traefik.http.routers.islandwar-api-secure.tls.certResolver=letsencrypt
+      - traefik.http.routers.islandwar-api-secure.service=islandwar-api
+      - traefik.http.services.islandwar-api.loadbalancer.server.port=8080
   frontend:
     build:
       context: .
       dockerfile: frontend/Dockerfile
       args:
         VITE_API_ORIGIN: ${API_ORIGIN:-https://island-war-api.orionlabs.lk}
-    ports:
-      - "8200:80"
+    restart: unless-stopped
+    expose:
+      - "80"
     depends_on:
-      backend:
-        condition: service_healthy
+      - backend
+    networks:
+      - dokploy-network
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=dokploy-network
+      - traefik.http.routers.islandwar-web.rule=Host(`island-war.orionlabs.lk`)
+      - traefik.http.routers.islandwar-web.entrypoints=web
+      - traefik.http.routers.islandwar-web.service=islandwar-web
+      - traefik.http.routers.islandwar-web-secure.rule=Host(`island-war.orionlabs.lk`)
+      - traefik.http.routers.islandwar-web-secure.entrypoints=websecure
+      - traefik.http.routers.islandwar-web-secure.tls=true
+      - traefik.http.routers.islandwar-web-secure.tls.certResolver=letsencrypt
+      - traefik.http.routers.islandwar-web-secure.service=islandwar-web
+      - traefik.http.services.islandwar-web.loadbalancer.server.port=80
 volumes:
   pgdata:
+networks:
+  dokploy-network:
+    external: true

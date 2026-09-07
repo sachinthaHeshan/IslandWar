@@ -24,12 +24,22 @@ Requires Docker Compose.
 ```sh
 cp .env.example .env
 # Edit POSTGRES_PASSWORD in .env before running.
-docker compose up --build
+just run-docker
 ```
 
-Open **https://island-war.orionlabs.lk**. Nginx serves the built frontend; the browser calls **https://island-war-api.orionlabs.lk** for `/api` and WebSockets. Locally those map to ports **8200** and **8201**. Point DNS (and TLS termination) at those ports. PostgreSQL uses a persistent Docker volume and is bound to localhost. `docker compose down` stops the services and preserves the database volume. The root `Dockerfile` still builds a single image that serves both from Go if you want that layout.
+Open **http://localhost:8200**. The API is on **http://localhost:8201**. Production domains are **https://island-war.orionlabs.lk** and **https://island-war-api.orionlabs.lk**. PostgreSQL uses a persistent Docker volume. `docker compose down` stops the services and preserves the database volume.
 
-Set `GAME_ORIGIN` to the exact frontend URL (`https://island-war.orionlabs.lk`) and `API_ORIGIN` to the exact API URL (`https://island-war-api.orionlabs.lk`), then rebuild so Vite bakes the API host into the client. For local Vite development, `APP_ORIGINS` accepts a comma-separated list of exact browser origins. Only configured browser origins are accepted. Internet hosting should use HTTPS and `COOKIE_SECURE=true`; provide a PostgreSQL connection with the appropriate TLS settings. The server supports WebSocket upgrades and needs a persistent Go process, so a static frontend host alone is insufficient.
+### Dokploy + Cloudflare
+
+A 502 means Traefik cannot reach the container. Host ports 8200/8201 are only for local Docker. Inside the containers the frontend listens on **80** and the API on **8080**.
+
+1. Cloudflare DNS: `A` records for `island-war` and `island-war-api` to the VPS IP. SSL/TLS mode **Full** (not Flexible).
+2. Dokploy Environment: `POSTGRES_PASSWORD`, `GAME_ORIGIN=https://island-war.orionlabs.lk`, `API_ORIGIN=https://island-war-api.orionlabs.lk`.
+3. Domains tab (if you add domains in the UI instead of compose labels): frontend service container port **80**, API service container port **8080**. Do not use 8200 or 8201.
+4. Do not also create duplicate UI domains if the compose Traefik labels are present — pick one method.
+5. Redeploy after pulling this compose file. Traefik needs about 10 seconds for certificates.
+
+Set `GAME_ORIGIN` and `API_ORIGIN`, then rebuild so Vite bakes the API host into the client. For local Vite development, `APP_ORIGINS` accepts a comma-separated list of exact browser origins. Only configured browser origins are accepted. Internet hosting should use HTTPS and `COOKIE_SECURE=true`. The server supports WebSocket upgrades and needs a persistent Go process, so a static frontend host alone is insufficient.
 
 ## Local development
 
