@@ -186,7 +186,7 @@ export function createTouchControls(root, settingsRoot, hooks) {
     const btn = buttons.get(name);
     if (!btn) return;
     const down = (e) => {
-      if (editing) return;
+      if (editing || btn.classList.contains('reloading')) return;
       e.preventDefault();
       e.stopPropagation();
       state[key] = true;
@@ -223,7 +223,7 @@ export function createTouchControls(root, settingsRoot, hooks) {
   });
 
   buttons.get('reload')?.addEventListener('click', (e) => {
-    if (editing) return;
+    if (editing || buttons.get('reload')?.classList.contains('reloading-active')) return;
     e.preventDefault();
     hooks.onReload?.();
   });
