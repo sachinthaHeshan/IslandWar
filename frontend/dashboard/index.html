@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Island War — Admin</title>
+  <link rel="stylesheet" href="./dashboard.css">
+</head>
+<body>
+  <header>
+    <a class="brand" href="/">◈ <span>ISLAND<span class="light">WAR</span><small>ADMIN</small></span></a>
+    <div id="session-label" class="session"><i></i> SIGN IN REQUIRED</div>
+  </header>
+
+  <p id="notice" role="status"></p>
+
+  <section id="login-panel">
+    <div class="eyebrow">RESTRICTED / OPERATIONS</div>
+    <h1>Command dashboard.</h1>
+    <p>Admin accounts are seeded on the server. Player logins cannot open this page.</p>
+    <form id="login-form">
+      <label>Username<input name="username" autocomplete="username" pattern="[a-zA-Z0-9_]{3,20}" minlength="3" maxlength="20" required></label>
+      <label>Password<input name="password" type="password" autocomplete="current-password" minlength="10" maxlength="72" required></label>
+      <button type="submit" class="mp-primary">SIGN IN ↗</button>
+    </form>
+  </section>
+
+  <section id="ops-panel" hidden>
+    <div class="ops-head">
+      <div>
+        <div class="eyebrow">LIVE OPERATIONS</div>
+        <h1>Island status.</h1>
+      </div>
+      <button type="button" id="sign-out" class="mp-secondary">SIGN OUT</button>
+    </div>
+    <div id="stats" class="stats"></div>
+    <div id="users-table"></div>
+    <div id="groups-table"></div>
+    <div id="matches-table"></div>
+    <div id="sessions-table"></div>
+  </section>
+
+  <script type="module" src="./dashboard.js"></script>
+</body>
+</html>

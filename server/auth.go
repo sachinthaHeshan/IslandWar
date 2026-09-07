@@ -41,7 +41,7 @@ func (s *Server) register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var u User
-	err = s.db.QueryRow(r.Context(), "INSERT INTO users(username,password_hash) VALUES($1,$2) RETURNING id,username", c.Username, string(h)).Scan(&u.ID, &u.Username)
+	err = s.db.QueryRow(r.Context(), "INSERT INTO users(username,password_hash) VALUES($1,$2) RETURNING id,username,is_admin", c.Username, string(h)).Scan(&u.ID, &u.Username, &u.IsAdmin)
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
@@ -64,13 +64,15 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) {
 	}
 	var u User
 	var hash string
-	err := s.db.QueryRow(r.Context(), "SELECT id,username,password_hash FROM users WHERE username=$1", strings.ToLower(strings.TrimSpace(c.Username))).Scan(&u.ID, &u.Username, &hash)
+	var deactivated *time.Time
+	err := s.db.QueryRow(r.Context(), "SELECT id,username,password_hash,is_admin,deactivated_at FROM users WHERE username=$1", strings.ToLower(strings.TrimSpace(c.Username))).Scan(&u.ID, &u.Username, &hash, &u.IsAdmin, &deactivated)
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		fail(w, 503, "Database unavailable")
 		return
 	}
-	if hash == "" {
+	if hash == "" || deactivated != nil {
 		hash = string(dummyHash)
+		u = User{}
 	}
 	if bcrypt.CompareHashAndPassword([]byte(hash), []byte(c.Password)) != nil || u.ID == 0 {
 		fail(w, 401, "Incorrect username or password")
@@ -99,7 +101,7 @@ func (s *Server) auth(next http.HandlerFunc) http.Handler {
 			return
 		}
 		var u User
-		e = s.db.QueryRow(r.Context(), "SELECT u.id,u.username FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token_hash=$1 AND s.expires_at>now()", hashToken(c.Value)).Scan(&u.ID, &u.Username)
+		e = s.db.QueryRow(r.Context(), "SELECT u.id,u.username,u.is_admin FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token_hash=$1 AND s.expires_at>now() AND u.deactivated_at IS NULL", hashToken(c.Value)).Scan(&u.ID, &u.Username, &u.IsAdmin)
 		if e != nil {
 			if !errors.Is(e, pgx.ErrNoRows) {
 				fail(w, 503, "Database unavailable")
@@ -131,7 +133,7 @@ func (s *Server) searchUsers(w http.ResponseWriter, r *http.Request) {
 		reply(w, 200, []User{})
 		return
 	}
-	rows, e := s.db.Query(r.Context(), "SELECT id,username FROM users WHERE strpos(username,$1)>0 AND id<>$2 ORDER BY username LIMIT 12", q, user(r).ID)
+	rows, e := s.db.Query(r.Context(), "SELECT id,username,is_admin FROM users WHERE strpos(username,$1)>0 AND id<>$2 ORDER BY username LIMIT 12", q, user(r).ID)
 	if e != nil {
 		fail(w, 500, "Search unavailable")
 		return
@@ -140,7 +142,7 @@ func (s *Server) searchUsers(w http.ResponseWriter, r *http.Request) {
 	list := []User{}
 	for rows.Next() {
 		var u User
-		if rows.Scan(&u.ID, &u.Username) != nil {
+		if rows.Scan(&u.ID, &u.Username, &u.IsAdmin) != nil {
 			fail(w, 500, "Search unavailable")
 			return
 		}

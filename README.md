@@ -122,11 +122,21 @@ The integration test creates uniquely named test accounts and groups, then exerc
 - `server/auth.go`: bcrypt passwords; opaque HttpOnly, SameSite session cookies; hashed session tokens in PostgreSQL; authentication/search rate limits.
 - `server/groups.go`: group ownership, username invitations, explicit acceptance, member limits, owner transfer on leaving, and match history.
 - `server/game.go`: 20 Hz authoritative simulation and snapshots over authenticated WebSockets. Clients send movement intentions, aim, shoot, and reload requests. Go owns positions, movement speed, island/crate collision, hit detection, ammunition, health, respawns, scores, and timeout. Client-supplied positions, health, and scores are never accepted.
-- `server/schema.sql`: users, sessions, groups, memberships, matches, and score records.
+- `server/schema.sql`: users (including `is_admin` and `deactivated_at`), sessions, groups, memberships, matches, and score records.
+- `server/admin.go`: admin-only overview and management APIs behind a session + `is_admin` check.
+- `frontend/dashboard/`: `/dashboard` ops UI. Admin users are created with `just seed-admin-user`.
 - `frontend/src/multiplayer.js`: account/group lobby, invitation flow, WebSocket connection, scoreboard, history, and error states.
 - `frontend/src/main.js`: procedural Three.js world, local/remote character rendering, interpolation, effects, input, and solo mode.
 
 The authoritative hitboxes are simple standing boxes; crates provide server-side cover. Decorative palms, foliage, and boundary posts do not block multiplayer shots. There is no lag compensation or client movement prediction yet; the current client interpolates server positions. Active rooms run in one Go process. Restarting it aborts unfinished rounds; accounts and completed scores persist. Do not run multiple game replicas against the same database without adding shared room ownership. Pending invitations count toward group capacity; invitees can decline, and owners cannot leave during a running/saving round. When the last accepted member leaves a group it is deleted, including its match history. Password recovery and email verification are not included.
+
+Admin accounts cannot be created from `/api/register`. Seed one (upserts the username, sets `is_admin`, and updates the password):
+
+```sh
+just seed-admin-user admin SuperSecret123
+```
+
+Then open **http://localhost:5173/dashboard/** (Docker: **http://localhost:8200/dashboard/**). Player accounts are rejected. The dashboard lists live WebSocket players, sessions, users, groups, and matches. Admins can activate, deactivate, or delete users, delete groups, abort running matches, and revoke sessions.
 
 Environment variables are documented in `.env.example`. `ADDR` defaults to `:8080`, `APP_ORIGIN` to `http://localhost:5173`, and `STATIC_DIR` to `../dist` relative to the Go process working directory. Built assets are output to `dist/`. Fonts use Google Fonts with local fallbacks.
 # IslandWar

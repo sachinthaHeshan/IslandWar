@@ -30,6 +30,7 @@ var schema string
 type User struct {
 	ID       int64  `json:"id"`
 	Username string `json:"username"`
+	IsAdmin  bool   `json:"isAdmin"`
 }
 type Server struct {
 	db      *pgxpool.Pool
@@ -53,7 +54,37 @@ func env(key, fallback string) string {
 	}
 	return fallback
 }
+func seedAdminCommand() {
+	if len(os.Args) != 4 {
+		log.Fatal("usage: go run . seed-admin <username> <password>")
+	}
+	ctx := context.Background()
+	dbURL := os.Getenv("DATABASE_URL")
+	if dbURL == "" {
+		log.Fatal("DATABASE_URL is required; see .env.example")
+	}
+	db, err := pgxpool.New(ctx, dbURL)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer db.Close()
+	if err = db.Ping(ctx); err != nil {
+		log.Fatal("PostgreSQL: ", err)
+	}
+	if _, err = db.Exec(ctx, schema); err != nil {
+		log.Fatal("migrations: ", err)
+	}
+	if err = seedAdminUser(ctx, db, os.Args[2], os.Args[3]); err != nil {
+		log.Fatal(err)
+	}
+	log.Printf("Admin user %q is ready", strings.ToLower(strings.TrimSpace(os.Args[2])))
+}
+
 func main() {
+	if len(os.Args) >= 2 && os.Args[1] == "seed-admin" {
+		seedAdminCommand()
+		return
+	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	dbURL := os.Getenv("DATABASE_URL")
@@ -122,6 +153,17 @@ func (s *Server) routes() http.Handler {
 	mux.Handle("POST /api/groups/{id}/start", s.auth(s.startMatch))
 	mux.Handle("GET /api/groups/{id}/ws", s.auth(s.connect))
 	mux.Handle("GET /api/history", s.auth(s.history))
+	mux.Handle("GET /api/admin/overview", s.requireAdmin(s.adminOverview))
+	mux.Handle("GET /api/admin/users", s.requireAdmin(s.adminListUsers))
+	mux.Handle("POST /api/admin/users/{id}/deactivate", s.requireAdmin(s.adminDeactivateUser))
+	mux.Handle("POST /api/admin/users/{id}/activate", s.requireAdmin(s.adminActivateUser))
+	mux.Handle("DELETE /api/admin/users/{id}", s.requireAdmin(s.adminDeleteUser))
+	mux.Handle("GET /api/admin/groups", s.requireAdmin(s.adminListGroups))
+	mux.Handle("DELETE /api/admin/groups/{id}", s.requireAdmin(s.adminDeleteGroup))
+	mux.Handle("GET /api/admin/matches", s.requireAdmin(s.adminListMatches))
+	mux.Handle("POST /api/admin/matches/{id}/abort", s.requireAdmin(s.adminAbortMatch))
+	mux.Handle("GET /api/admin/sessions", s.requireAdmin(s.adminListSessions))
+	mux.Handle("DELETE /api/admin/sessions/{id}", s.requireAdmin(s.adminRevokeSession))
 	static := env("STATIC_DIR", "../dist")
 	mux.Handle("/", http.FileServer(http.Dir(filepath.Clean(static))))
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -138,7 +180,7 @@ func (s *Server) routes() http.Handler {
 			w.Header().Set("Access-Control-Allow-Origin", origin)
 			w.Header().Set("Access-Control-Allow-Credentials", "true")
 			w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
-			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
 			w.Header().Set("Vary", "Origin")
 		}
 		if r.Method == http.MethodOptions {
