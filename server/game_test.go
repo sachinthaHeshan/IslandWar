@@ -40,6 +40,37 @@ func TestAuthoritativeCombat(t *testing.T) {
 		t.Fatal("respawn or protection missing")
 	}
 }
+func TestAnyBodyPartCountsAsHit(t *testing.T) {
+	now := time.Now()
+	r := testRoom()
+	p := &Player{User: User{ID: 2}, Health: 100, Connected: true}
+	r.players[2] = p
+	hit := func(origin Vec) *Player {
+		_, victim := r.trace(origin, Vec{0, 0, -1}, 1, now)
+		return victim
+	}
+	if hit(Vec{0.55, 1.4, 4}) != p {
+		t.Fatal("shot through the arm missed")
+	}
+	if hit(Vec{0, 2.4, 4}) != p {
+		t.Fatal("shot through the head missed")
+	}
+	if hit(Vec{0.25, 0.12, 4}) != p {
+		t.Fatal("shot through the leg missed")
+	}
+	if hit(Vec{1.6, 1.4, 4}) != nil {
+		t.Fatal("shot beside the body counted as a hit")
+	}
+	p.Yaw = math.Pi / 2
+	if _, victim := r.trace(Vec{4, 1.4, -0.55}, Vec{-1, 0, 0}, 1, now); victim != p {
+		t.Fatal("shot through a turned player's arm missed")
+	}
+	p.Yaw = 0
+	p.Crawling = true
+	if hit(Vec{0, 1.25, 4}) != p {
+		t.Fatal("shot through a crawling player's upper body missed")
+	}
+}
 func TestCoverAndProtection(t *testing.T) {
 	r := testRoom()
 	now := time.Now()

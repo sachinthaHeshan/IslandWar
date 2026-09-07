@@ -226,7 +226,7 @@ func (r *Room) step(now time.Time, dt float64) bool {
 	return false
 }
 
-// Slab intersection gives a server-owned hit distance for axis-aligned bodies and cover.
+// Slab intersection gives a server-owned hit distance for cover and oriented body parts.
 func rayBox(origin, dir, min, max Vec) float64 {
 	near, far := 0.0, 260.0
 	for _, axis := range [][4]float64{{origin.X, dir.X, min.X, max.X}, {origin.Y, dir.Y, min.Y, max.Y}, {origin.Z, dir.Z, min.Z, max.Z}} {
@@ -251,15 +251,46 @@ func rayBox(origin, dir, min, max Vec) float64 {
 }
 func playerHitHeight(p *Player) float64 {
 	if p.Crawling {
-		return 1.05
+		return 1.44
 	}
-	return 2.35
+	return 2.48
 }
 func playerEyeHeight(p *Player) float64 {
 	if p.Crawling {
 		return 0.95
 	}
 	return 2.4
+}
+func worldToPlayerLocal(origin, dir Vec, p *Player) (Vec, Vec) {
+	dx, dz := origin.X-p.X, origin.Z-p.Z
+	c, s := math.Cos(p.Yaw), math.Sin(p.Yaw)
+	return Vec{c*dx - s*dz, origin.Y - p.Y, s*dx + c*dz}, Vec{c*dir.X - s*dir.Z, dir.Y, s*dir.X + c*dir.Z}
+}
+func playerHitParts(p *Player) [][2]Vec {
+	y := 1.0
+	armZ := -0.62
+	if p.Crawling {
+		y = 0.58
+		armZ = -0.9
+	}
+	return [][2]Vec{
+		{{-.32, 1.7 * y, -.32}, {.32, 2.48 * y, .32}},
+		{{-.42, .88 * y, -.3}, {.42, 1.8 * y, .3}},
+		{{-.7, 1.0 * y, armZ}, {-.28, 1.78 * y, .22}},
+		{{.28, 1.0 * y, armZ}, {.7, 1.78 * y, .22}},
+		{{-.42, 0, -.36}, {-.02, 1.05 * y, .2}},
+		{{.02, 0, -.36}, {.42, 1.05 * y, .2}},
+	}
+}
+func playerHitDistance(origin, dir Vec, p *Player) float64 {
+	localOrigin, localDir := worldToPlayerLocal(origin, dir, p)
+	closest := math.Inf(1)
+	for _, part := range playerHitParts(p) {
+		if d := rayBox(localOrigin, localDir, part[0], part[1]); d < closest {
+			closest = d
+		}
+	}
+	return closest
 }
 func (r *Room) trace(origin, dir Vec, shooter int64, now time.Time) (float64, *Player) {
 	maxRange:=240.0
@@ -277,7 +308,7 @@ func (r *Room) trace(origin, dir Vec, shooter int64, now time.Time) (float64, *P
 		if p.ID == shooter || p.Health <= 0 || !p.Connected || now.UnixMilli() < p.ProtectedUntil {
 			continue
 		}
-		d := rayBox(origin, dir, Vec{p.X - .42, p.Y, p.Z - .42}, Vec{p.X + .42, p.Y + playerHitHeight(p), p.Z + .42})
+		d := playerHitDistance(origin, dir, p)
 		if d < closest {
 			closest = d
 			victim = p
