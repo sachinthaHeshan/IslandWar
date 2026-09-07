@@ -78,6 +78,7 @@ const camera = new THREE.PerspectiveCamera(
   450,
 );
 const scopeCam = new THREE.PerspectiveCamera(34, 1, 0.15, 450);
+scopeCam.layers.enableAll();
 const scopeRT = new THREE.WebGLRenderTarget(1024, 1024, { depthBuffer: true });
 scopeRT.texture.colorSpace = THREE.SRGBColorSpace;
 scopeRT.texture.generateMipmaps = false;
@@ -964,12 +965,15 @@ function renderFrame() {
   syncScopeCamera();
   const prevTarget = renderer.getRenderTarget();
   const prevAutoClear = renderer.autoClear;
+  const localVisible = player.visible;
+  player.visible = false;
   renderer.setRenderTarget(scopeRT);
   renderer.autoClear = true;
   renderer.clear();
   renderer.render(scene, scopeCam);
   renderer.setRenderTarget(prevTarget);
   renderer.autoClear = prevAutoClear;
+  player.visible = localVisible;
   scopeLens.material.toneMapped = false;
   scopeLens.visible = true;
   renderer.autoClear = false;
@@ -1097,6 +1101,21 @@ addEventListener("resize", () => {
   syncScopeCamera();
 });
 
+function disposeRemote(remote) {
+  scene.remove(remote.model);
+  remote.model.traverse((o) => {
+    o.geometry?.dispose();
+    const mats = o.material
+      ? Array.isArray(o.material)
+        ? o.material
+        : [o.material]
+      : [];
+    for (const m of mats) {
+      m.map?.dispose();
+      m.dispose?.();
+    }
+  });
+}
 const remotePlayers = new Map();
 let networkSelf = null;
 const originalStats = document.querySelector(".topstats").innerHTML;
@@ -1139,14 +1158,16 @@ const multiplayer = createMultiplayer({
       if (!remote) {
         const model = player.clone(true);
         model.traverse((o) => {
-          o.layers.set(0);
-          if (o.isMesh && o.material === uniform) {
-            o.material = mat("#a76d4d");
+          o.layers.enableAll();
+          if (!o.isMesh) return;
+          if (o.material?.isMeshBasicMaterial) {
+            o.visible = false;
+            return;
           }
-        });
-        // Muzzle flash is the only basic-material sphere in the operator model.
-        model.traverse((o) => {
-          if (o.isMesh && o.material.isMeshBasicMaterial) o.visible = false;
+          const cloth = o.material === uniform;
+          if (o.geometry?.clone) o.geometry = o.geometry.clone();
+          if (o.material?.clone) o.material = o.material.clone();
+          if (cloth) o.material.color.set("#a76d4d");
         });
         const labelCanvas = document.createElement("canvas");
         labelCanvas.width = 512;
@@ -1166,7 +1187,7 @@ const multiplayer = createMultiplayer({
         );
         label.position.set(0, 2.8, 0);
         label.scale.set(2.7, 0.42, 1);
-        label.layers.set(0);
+        label.layers.enableAll();
         model.add(label);
         scene.add(model);
         remote = { model, data: opponent, label };
@@ -1174,6 +1195,7 @@ const multiplayer = createMultiplayer({
         model.position.set(opponent.x, opponent.y, opponent.z);
       }
       remote.data = opponent;
+      remote.model.traverse((o) => o.layers.enableAll());
       remote.model.visible = opponent.connected && opponent.health > 0;
       remote.label.material.color.set(
         opponent.protectedUntil > snapshot.now ? "#dbea92" : "#ffffff",
@@ -1181,9 +1203,7 @@ const multiplayer = createMultiplayer({
     }
     for (const [id, remote] of remotePlayers) {
       if (!existing.has(id)) {
-        scene.remove(remote.model);
-        remote.label.material.map.dispose();
-        remote.label.material.dispose();
+        disposeRemote(remote);
         remotePlayers.delete(id);
       }
     }
@@ -1248,9 +1268,7 @@ const multiplayer = createMultiplayer({
   onExit() {
     document.body.classList.remove("multiplayer", "dead");
     for (const remote of remotePlayers.values()) {
-      scene.remove(remote.model);
-      remote.label.material.map.dispose();
-      remote.label.material.dispose();
+      disposeRemote(remote);
     }
     remotePlayers.clear();
     networkSelf = null;
