@@ -2,6 +2,8 @@ CREATE TABLE IF NOT EXISTS users (
  id BIGSERIAL PRIMARY KEY,
  username TEXT NOT NULL UNIQUE CHECK (username ~ '^[a-z0-9_]{3,20}$'),
  password_hash TEXT NOT NULL,
+ is_admin BOOLEAN NOT NULL DEFAULT false,
+ deactivated_at TIMESTAMPTZ,
  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE TABLE IF NOT EXISTS sessions (
@@ -37,3 +39,5 @@ CREATE TABLE IF NOT EXISTS match_scores (
  deaths INTEGER NOT NULL DEFAULT 0,
  PRIMARY KEY(match_id, user_id)
 );
+ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS deactivated_at TIMESTAMPTZ;

@@ -43,28 +43,28 @@ type Input struct {
 }
 type Player struct {
 	User
-	X              float64 `json:"x"`
-	Y              float64 `json:"y"`
-	Z              float64 `json:"z"`
-	Yaw            float64 `json:"yaw"`
-	Pitch          float64 `json:"pitch"`
-	VX             float64 `json:"vx"`
-	VY             float64 `json:"vy"`
-	VZ             float64 `json:"vz"`
-	Grounded       bool    `json:"grounded"`
-	Aiming         bool    `json:"aiming"`
-	Sprinting      bool    `json:"sprinting"`
-	Crawling       bool    `json:"crawling"`
+	X              float64        `json:"x"`
+	Y              float64        `json:"y"`
+	Z              float64        `json:"z"`
+	Yaw            float64        `json:"yaw"`
+	Pitch          float64        `json:"pitch"`
+	VX             float64        `json:"vx"`
+	VY             float64        `json:"vy"`
+	VZ             float64        `json:"vz"`
+	Grounded       bool           `json:"grounded"`
+	Aiming         bool           `json:"aiming"`
+	Sprinting      bool           `json:"sprinting"`
+	Crawling       bool           `json:"crawling"`
 	Weapon         string         `json:"weapon"`
 	Weapons        map[string]int `json:"weapons"`
 	Health         int            `json:"health"`
-	Ammo           int     `json:"ammo"`
-	Kills          int     `json:"kills"`
-	Deaths         int     `json:"deaths"`
-	Connected      bool    `json:"connected"`
-	Reloading      bool    `json:"reloading"`
-	RespawnAt      int64   `json:"respawnAt"`
-	ProtectedUntil int64   `json:"protectedUntil"`
+	Ammo           int            `json:"ammo"`
+	Kills          int            `json:"kills"`
+	Deaths         int            `json:"deaths"`
+	Connected      bool           `json:"connected"`
+	Reloading      bool           `json:"reloading"`
+	RespawnAt      int64          `json:"respawnAt"`
+	ProtectedUntil int64          `json:"protectedUntil"`
 	input          Input
 	inputAt        time.Time
 	lastShot       time.Time
@@ -74,15 +74,15 @@ type Player struct {
 	jump           bool
 }
 type Event struct {
-	Type    string `json:"type"`
-	Shooter int64  `json:"shooter"`
-	Victim  int64  `json:"victim,omitempty"`
-	Start   Vec    `json:"start"`
-	End     Vec    `json:"end"`
-	Kill    bool   `json:"kill"`
-	Weapon  string `json:"weapon,omitempty"`
-	Damage  int    `json:"damage,omitempty"`
-	Headshot bool  `json:"headshot,omitempty"`
+	Type     string `json:"type"`
+	Shooter  int64  `json:"shooter"`
+	Victim   int64  `json:"victim,omitempty"`
+	Start    Vec    `json:"start"`
+	End      Vec    `json:"end"`
+	Kill     bool   `json:"kill"`
+	Weapon   string `json:"weapon,omitempty"`
+	Damage   int    `json:"damage,omitempty"`
+	Headshot bool   `json:"headshot,omitempty"`
 }
 type Room struct {
 	ID      int64  `json:"groupId"`
@@ -96,15 +96,15 @@ type Room struct {
 	loot    map[int]int64
 }
 type Snapshot struct {
-	Type    string    `json:"type"`
-	GroupID int64     `json:"groupId"`
-	OwnerID int64     `json:"ownerId"`
-	State   string    `json:"state"`
-	MatchID int64     `json:"matchId"`
-	EndAt   int64     `json:"endAt"`
-	Now     int64     `json:"now"`
-	Players []*Player `json:"players"`
-	Events  []Event   `json:"events"`
+	Type    string      `json:"type"`
+	GroupID int64       `json:"groupId"`
+	OwnerID int64       `json:"ownerId"`
+	State   string      `json:"state"`
+	MatchID int64       `json:"matchId"`
+	EndAt   int64       `json:"endAt"`
+	Now     int64       `json:"now"`
+	Players []*Player   `json:"players"`
+	Events  []Event     `json:"events"`
 	Loot    []LootState `json:"loot"`
 }
 type Peer struct {
@@ -120,6 +120,41 @@ type Hub struct {
 }
 
 func newHub(s *Server) *Hub { return &Hub{rooms: map[int64]*Room{}, server: s} }
+
+func (h *Hub) liveCount() int {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	n := 0
+	for _, r := range h.rooms {
+		n += len(r.peers)
+	}
+	return n
+}
+
+func (h *Hub) closeGroup(gid int64) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if r := h.rooms[gid]; r != nil {
+		for _, p := range r.peers {
+			p.conn.Close()
+		}
+		delete(h.rooms, gid)
+	}
+}
+
+func (h *Hub) abortMatch(matchID int64) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	for id, r := range h.rooms {
+		if r.MatchID == matchID {
+			for _, p := range r.peers {
+				p.conn.Close()
+			}
+			delete(h.rooms, id)
+			return
+		}
+	}
+}
 
 func (r *Room) spawn(p *Player, now time.Time) {
 	// Pick a spawn furthest from living opponents to reduce repeated spawn kills.
@@ -144,13 +179,20 @@ func (r *Room) spawn(p *Player, now time.Time) {
 	}
 	p.X = best.X
 	p.Z = best.Z
-	p.Y = groundHeight(p.X,p.Z)
-	p.VX=0;p.VY=0;p.VZ=0;p.Grounded=true;p.Aiming=false;p.Sprinting=false;p.Crawling=false;p.jump=false
+	p.Y = groundHeight(p.X, p.Z)
+	p.VX = 0
+	p.VY = 0
+	p.VZ = 0
+	p.Grounded = true
+	p.Aiming = false
+	p.Sprinting = false
+	p.Crawling = false
+	p.jump = false
 	p.Yaw = math.Atan2(p.X, p.Z+8)
 	p.Health = 100
- p.Weapon = "pistol"
- p.Weapons = map[string]int{"pistol": arena.Weapons["pistol"].Magazine}
- p.Ammo = p.Weapons["pistol"]
+	p.Weapon = "pistol"
+	p.Weapons = map[string]int{"pistol": arena.Weapons["pistol"].Magazine}
+	p.Ammo = p.Weapons["pistol"]
 	p.RespawnAt = 0
 	p.ProtectedUntil = now.Add(2 * time.Second).UnixMilli()
 	p.Reloading = false
@@ -217,7 +259,7 @@ func (r *Room) step(now time.Time, dt float64) bool {
 			p.reloadEnd = now.Add(time.Duration(weaponFor(p).Reload * float64(time.Second)))
 		}
 		p.reload = false
-		movePlayer(p,now,dt)
+		movePlayer(p, now, dt)
 		if p.shoot && p.Connected {
 			r.fire(p, now)
 		}
@@ -293,13 +335,15 @@ func playerHitDistance(origin, dir Vec, p *Player) float64 {
 	return closest
 }
 func (r *Room) trace(origin, dir Vec, shooter int64, now time.Time) (float64, *Player) {
-	maxRange:=240.0
-	if p:=r.players[shooter];p!=nil{maxRange=weaponFor(p).Range}
-	closest := terrainDistance(origin,dir,maxRange)
+	maxRange := 240.0
+	if p := r.players[shooter]; p != nil {
+		maxRange = weaponFor(p).Range
+	}
+	closest := terrainDistance(origin, dir, maxRange)
 	var victim *Player
 	for _, c := range arena.Cover {
-		y:=groundHeight(c.X,c.Z)
-		d := rayBox(origin, dir, Vec{c.X-c.W/2,y,c.Z-c.D/2}, Vec{c.X+c.W/2,y+c.H,c.Z+c.D/2})
+		y := groundHeight(c.X, c.Z)
+		d := rayBox(origin, dir, Vec{c.X - c.W/2, y, c.Z - c.D/2}, Vec{c.X + c.W/2, y + c.H, c.Z + c.D/2})
 		if d < closest {
 			closest = d
 		}
@@ -317,7 +361,7 @@ func (r *Room) trace(origin, dir Vec, shooter int64, now time.Time) (float64, *P
 	return closest, victim
 }
 func (r *Room) fire(p *Player, now time.Time) {
-	w:=weaponFor(p)
+	w := weaponFor(p)
 	if p.Health <= 0 || p.Reloading || now.Sub(p.lastShot) < time.Duration(w.Cooldown*float64(time.Second)) {
 		return
 	}
@@ -346,15 +390,20 @@ func (r *Room) fire(p *Player, now time.Time) {
 		muzzleY = 0.72
 	}
 	muzzle := Vec{p.X, p.Y + muzzleY, p.Z}.add(right.mul(.44)).add(Vec{-math.Sin(yaw), 0, -math.Cos(yaw)}.mul(1.41))
-	if p.input.Aim { muzzle=camera.add(direction.mul(.3)) }
+	if p.input.Aim {
+		muzzle = camera.add(direction.mul(.3))
+	}
 	shotDir := aim.sub(muzzle).unit()
 	distance, victim := r.trace(muzzle, shotDir, p.ID, now)
-	event := Event{Type: "shot", Shooter: p.ID, Start: muzzle, End: muzzle.add(shotDir.mul(distance)),Weapon:p.Weapon}
+	event := Event{Type: "shot", Shooter: p.ID, Start: muzzle, End: muzzle.add(shotDir.mul(distance)), Weapon: p.Weapon}
 	impact := muzzle.add(shotDir.mul(distance))
 	if victim != nil {
 		event.Victim = victim.ID
-		event.Damage=w.Damage
-		if p.Weapon=="sniper"&&event.End.Y>=victim.Y+playerHitHeight(victim)*.78{event.Damage=100;event.Headshot=true}
+		event.Damage = w.Damage
+		if p.Weapon == "sniper" && event.End.Y >= victim.Y+playerHitHeight(victim)*.78 {
+			event.Damage = 100
+			event.Headshot = true
+		}
 		r.applyDamage(victim, event.Damage, p, now, &event)
 	}
 	if w.Splash > 0 {
@@ -425,7 +474,7 @@ func (h *Hub) run(ctx context.Context) {
 					}
 					return players[i].Kills > players[j].Kills
 				})
-				data, _ := json.Marshal(Snapshot{Type: "snapshot", GroupID: r.ID, OwnerID: r.OwnerID, State: r.State, MatchID: r.MatchID, EndAt: r.EndAt, Now: now.UnixMilli(), Players: players, Events: r.events,Loot:r.lootSnapshot()})
+				data, _ := json.Marshal(Snapshot{Type: "snapshot", GroupID: r.ID, OwnerID: r.OwnerID, State: r.State, MatchID: r.MatchID, EndAt: r.EndAt, Now: now.UnixMilli(), Players: players, Events: r.events, Loot: r.lootSnapshot()})
 				r.events = nil
 				for _, p := range r.peers {
 					select {

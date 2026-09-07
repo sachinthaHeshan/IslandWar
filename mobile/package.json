@@ -1,0 +1,20 @@
+{
+  "name": "island-war-mobile",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Capacitor Android and iOS wrapper for the Island War frontend",
+  "scripts": {
+    "build:web": "cd ../frontend && VITE_API_ORIGIN=${VITE_API_ORIGIN:-https://island-war-api.orionlabs.lk} npm run build",
+    "sync": "npm run build:web && npx cap sync",
+    "open:android": "npx cap open android",
+    "open:ios": "npx cap open ios"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.5.1",
+    "@capacitor/core": "^8.5.1",
+    "@capacitor/ios": "^8.5.1"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.5.1"
+  }
+}

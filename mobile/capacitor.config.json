@@ -1,0 +1,8 @@
+{
+  "appId": "lk.orionlabs.islandwar",
+  "appName": "Island War",
+  "webDir": "../frontend/dist",
+  "server": {
+    "androidScheme": "https"
+  }
+}

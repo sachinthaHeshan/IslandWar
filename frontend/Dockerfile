@@ -4,6 +4,7 @@ COPY frontend/package*.json ./
 RUN npm ci
 COPY frontend/index.html frontend/vite.config.js ./
 COPY frontend/src ./src
+COPY frontend/dashboard ./dashboard
 COPY server/arena.json /build/server/arena.json
 ARG VITE_API_ORIGIN=https://island-war-api.orionlabs.lk
 ENV VITE_API_ORIGIN=$VITE_API_ORIGIN
