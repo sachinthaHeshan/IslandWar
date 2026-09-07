@@ -33,6 +33,7 @@ import {
   weaponShortName,
 } from "./weapons.js";
 import { createTouchControls } from "./touchControls.js";
+import { createDesktopControls } from "./desktopControls.js";
 
 const $ = (id) => document.getElementById(id);
 const canvas = $("game");
@@ -406,25 +407,26 @@ function moveAxis() {
   if (touch?.enabled && active)
     return { x: touch.state.moveX, z: touch.state.moveZ };
   return {
-    x: (keys.has("KeyD") ? 1 : 0) - (keys.has("KeyA") ? 1 : 0),
-    z: (keys.has("KeyS") ? 1 : 0) - (keys.has("KeyW") ? 1 : 0),
+    x: (desktop.held("right", keys, pointerButtons) ? 1 : 0) - (desktop.held("left", keys, pointerButtons) ? 1 : 0),
+    z: (desktop.held("back", keys, pointerButtons) ? 1 : 0) - (desktop.held("forward", keys, pointerButtons) ? 1 : 0),
   };
 }
 function wantsSprint() {
   return touch?.enabled
     ? !!touch.state.sprint
-    : keys.has("ShiftLeft") || keys.has("ShiftRight");
+    : desktop.held("sprint", keys, pointerButtons);
 }
 function wantsJumpInput() {
-  return touch?.enabled ? !!touch.state.jump : keys.has("Space");
+  return touch?.enabled ? !!touch.state.jump : desktop.held("jump", keys, pointerButtons);
 }
 function wantsCrawl() {
-  return keys.has("ControlLeft") || keys.has("ControlRight");
+  return desktop.held("crawl", keys, pointerButtons);
 }
 function isAimHeld() {
   return (
     active &&
-    ((pointerButtons & 2) === 2 || (touch?.enabled && touch.state.aim))
+    (desktop.held("aim", keys, pointerButtons) ||
+      (touch?.enabled && touch.state.aim))
   );
 }
 function wantsAim() {
@@ -563,7 +565,7 @@ function updateInteractPrompt() {
     icon.textContent = "↗";
     label.textContent = `Pick up ${weaponShortName(loot.weapon)}`;
   } else {
-    icon.textContent = "E";
+    icon.textContent = desktop.bindLabel("pickup");
     label.textContent = `Pick up ${weaponShortName(loot.weapon)}`;
   }
 }
@@ -755,7 +757,12 @@ document.addEventListener("pointerlockerror", () => {
 });
 document.addEventListener("pointerdown", (e) => {
   pointerButtons = e.buttons;
-  if (e.button === 2 && active) e.preventDefault();
+  if (
+    active &&
+    desktop.isMouse("aim") &&
+    e.button === Number(desktop.codeOf("aim").slice(5))
+  )
+    e.preventDefault();
 });
 document.addEventListener("pointerup", (e) => {
   pointerButtons = e.buttons;
@@ -764,29 +771,18 @@ document.addEventListener("pointermove", (e) => {
   if (active) pointerButtons = e.buttons;
 });
 addEventListener("keydown", (e) => {
-  if (
-    active &&
-    [
-      "Space",
-      "ArrowUp",
-      "ArrowDown",
-      "ArrowLeft",
-      "ArrowRight",
-      "ControlLeft",
-      "ControlRight",
-    ].includes(e.code)
-  )
-    e.preventDefault();
+  if (active && desktop.shouldPrevent(e.code)) e.preventDefault();
   keys.add(e.code);
   if (!active || e.repeat) return;
-  if (e.code === "Space" && multiplayer.state.connected)
+  if (desktop.matches("jump", e.code) && multiplayer.state.connected)
     multiplayer.send({ type: "jump" });
-  if (e.code === "KeyE") tryPickup();
-  if (e.code === "Digit1") trySwitch(1);
-  if (e.code === "Digit2") trySwitch(2);
-  if (e.code === "Digit3") trySwitch(3);
-  if (e.code === "Digit4") trySwitch(4);
-  if (e.code === "KeyR") tryReload();
+  if (desktop.matches("pickup", e.code)) tryPickup();
+  if (desktop.matches("weapon1", e.code)) trySwitch(1);
+  if (desktop.matches("weapon2", e.code)) trySwitch(2);
+  if (desktop.matches("weapon3", e.code)) trySwitch(3);
+  if (desktop.matches("weapon4", e.code)) trySwitch(4);
+  if (desktop.matches("reload", e.code)) tryReload();
+  if (desktop.matches("shoot", e.code) && !desktop.isMouse("shoot")) shoot();
 });
 addEventListener("keyup", (e) => keys.delete(e.code));
 addEventListener("blur", () => {
@@ -811,7 +807,7 @@ document.addEventListener("mousemove", (e) => {
   if (!active || touch?.enabled) return;
   const id = activeWeaponId();
   const aimSlow = id === "sniper" ? 0.62 : id === "ak47" ? 0.22 : 0;
-  const sens = 0.0022 * (1 - aimBlend * aimSlow);
+  const sens = 0.0022 * desktop.mouseSpeed * (1 - aimBlend * aimSlow);
   yaw -= e.movementX * sens;
   pitch = THREE.MathUtils.clamp(pitch - e.movementY * sens, -0.55, 0.42);
 });
@@ -889,8 +885,9 @@ function shoot() {
   updateHUD();
 }
 function shouldShootFromPointer(e) {
-  if (e.button !== 0 || !active) return false;
-  if (touch?.enabled) return false;
+  if (!active || touch?.enabled) return false;
+  if (!desktop.isMouse("shoot")) return false;
+  if (e.button !== Number(desktop.codeOf("shoot").slice(5))) return false;
   const t = e.target;
   if (t === canvas || canvas.contains(t)) return true;
   return false;
@@ -1301,7 +1298,9 @@ function networkFrame(dt) {
       active &&
       (touch?.enabled
         ? Math.hypot(mv.x, mv.z) > 0.12
-        : ["KeyW", "KeyA", "KeyS", "KeyD"].some((k) => keys.has(k)));
+        : ["forward", "left", "back", "right"].some((a) =>
+            desktop.held(a, keys, pointerButtons),
+          ));
     legs.forEach(
       (leg, i) =>
         (leg.rotation.x = moving
@@ -1329,6 +1328,21 @@ document.querySelectorAll(".weapon-slot").forEach((s) => {
     passive: true,
   });
 });
+function updateDesktopLabels() {
+  if (!desktop) return;
+  document.querySelectorAll(".weapon-slot[data-slot]").forEach((slot) => {
+    const kbd = slot.querySelector("kbd");
+    if (kbd) kbd.textContent = desktop.bindLabel(`weapon${slot.dataset.slot}`);
+  });
+  const hud = document.querySelector("footer .controls");
+  if (!hud) return;
+  const k = (id) => desktop.bindLabel(id);
+  hud.innerHTML = `<span><kbd>${k("forward")}</kbd><kbd>${k("left")}</kbd><kbd>${k("back")}</kbd><kbd>${k("right")}</kbd> Move</span><span><kbd>${k("sprint")}</kbd> Sprint</span><span><kbd>${k("crawl")}</kbd> Crawl</span><span><kbd>${k("jump")}</kbd> Jump</span><span><kbd>${k("pickup")}</kbd> Pick up</span><span><kbd>${k("weapon1")}</kbd><kbd>${k("weapon2")}</kbd><kbd>${k("weapon3")}</kbd><kbd>${k("weapon4")}</kbd> Switch</span><span><kbd>${k("shoot")}</kbd> Shoot</span><span><kbd>${k("aim")}</kbd> Scope</span><span><kbd>SCROLL</kbd> Zoom</span><span><kbd>${k("reload")}</kbd> Reload</span><span><kbd>Esc</kbd> Pause</span>`;
+}
+const desktop = createDesktopControls($("touch-settings"), {
+  onChange: updateDesktopLabels,
+});
+updateDesktopLabels();
 const touch = createTouchControls($("touch-controls"), $("touch-settings"), {
   onReload: tryReload,
   onPause: pauseGame,
@@ -1341,6 +1355,7 @@ function settingsView(id) {
   return $(id);
 }
 function showSettingsView(view) {
+  desktop.cancelListen();
   settingsView("settings-menu").hidden = view !== "menu";
   settingsView("settings-controls").hidden = view !== "controls";
   settingsView("settings-sound").hidden = view !== "sound";

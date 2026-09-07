@@ -90,20 +90,17 @@ html.ready #boot{opacity:0;pointer-events:none;transition:opacity .4s ease}
     <section id="settings-controls" hidden>
       <div id="desktop-control-settings">
         <h3>Keyboard &amp; mouse</h3>
-        <p class="touch-settings-copy">Desktop shooting uses pointer lock. Press Esc to pause and return here.</p>
-        <ul class="touch-settings-list control-bind-list">
-          <li><span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></span> Move</li>
-          <li><span><kbd>⇧ Shift</kbd></span> Sprint</li>
-          <li><span><kbd>Ctrl</kbd></span> Crawl</li>
-          <li><span><kbd>Space</kbd></span> Jump</li>
-          <li><span><kbd>E</kbd></span> Pick up</li>
-          <li><span><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd><kbd>4</kbd></span> Switch weapon</li>
-          <li><span><kbd>Click</kbd></span> Shoot</li>
-          <li><span><kbd>Right click</kbd></span> Aim / scope</li>
-          <li><span><kbd>Scroll</kbd></span> Zoom</li>
-          <li><span><kbd>R</kbd></span> Reload</li>
-          <li><span><kbd>Esc</kbd></span> Pause</li>
-        </ul>
+        <p class="touch-settings-copy">Click a bind, then press a key — or click empty space with a mouse button. Esc cancels.</p>
+        <ul id="desktop-bind-list" class="control-bind-list"></ul>
+        <div class="mouse-speed-row">
+          <span>Mouse speed</span>
+          <div class="mouse-speed-stepper">
+            <button type="button" id="mouse-speed-down" aria-label="Slower">−</button>
+            <strong id="mouse-speed-value">100%</strong>
+            <button type="button" id="mouse-speed-up" aria-label="Faster">+</button>
+          </div>
+        </div>
+        <button type="button" id="desktop-binds-reset" class="touch-settings-secondary">Reset to Default</button>
       </div>
       <div id="mobile-control-settings">
         <h3>Touch controls</h3>

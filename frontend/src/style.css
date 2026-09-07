@@ -70,7 +70,7 @@ html:not(.touch-device) .interact-icon{font-size:13px;font-weight:800;letter-spa
 #touch-settings{position:fixed;inset:0;z-index:30;display:flex;flex-direction:column;background:linear-gradient(165deg,#132e2df8,#173e38fa);backdrop-filter:blur(12px);padding:max(18px,env(safe-area-inset-top)) max(18px,env(safe-area-inset-right)) max(18px,env(safe-area-inset-bottom)) max(18px,env(safe-area-inset-left))}
 #touch-settings[hidden]{display:none!important}
 .touch-settings-backdrop{display:none}
-.touch-settings-panel{position:relative;flex:1;display:flex;flex-direction:column;width:100%;max-width:480px;margin:0 auto;padding:8px 0 24px}
+.touch-settings-panel{position:relative;flex:1;display:flex;flex-direction:column;width:100%;max-width:480px;margin:0 auto;padding:8px 0 24px;overflow-y:auto}
 .touch-settings-head{display:flex;align-items:center;gap:12px;margin-bottom:18px}
 .touch-settings-close{border:0;background:transparent;color:#dbea92;font-size:10px;font-weight:700;letter-spacing:1px;padding:8px 0}
 .touch-settings-eyebrow{font-size:9px;letter-spacing:2.2px;color:#8da99c;margin:0}
@@ -127,5 +127,12 @@ html.touch-device #desktop-control-settings{display:none!important}
 html:not(.touch-device) #mobile-control-settings{display:none!important}
 .control-bind-list{list-style:none;padding:0;margin:0 0 8px}
 .control-bind-list li{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 0;border-bottom:1px solid rgba(204,223,188,.15);font-size:12px;letter-spacing:.4px;color:#c9d9cb}
-.control-bind-list li span{display:flex;gap:4px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+.control-bind-list .bind-label{flex:1}
+.control-bind-list .bind-key{min-width:118px;border:1px solid rgba(227,237,206,.35);background:rgba(23,53,44,.55);color:#eaf2dd;font-size:10px;font-weight:700;letter-spacing:.8px;padding:10px 12px}
+.control-bind-list .bind-key.listening{border-color:#dbea92;color:#defc80;background:rgba(219,234,146,.12)}
+.mouse-speed-row{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:22px 0 8px;font-size:12px;letter-spacing:.4px;color:#c9d9cb}
+.mouse-speed-stepper{display:flex;align-items:center;gap:10px}
+.mouse-speed-stepper button{width:42px;height:42px;border:1px solid rgba(227,237,206,.35);background:rgba(23,53,44,.55);color:#eaf2dd;font-size:18px;line-height:1}
+#mouse-speed-value{min-width:52px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:22px;color:#eaf2dd}
+#desktop-binds-reset{margin-top:16px}
 #settings-menu,#settings-controls,#settings-sound{display:flex;flex-direction:column}
