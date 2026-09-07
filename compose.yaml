@@ -14,17 +14,30 @@ services:
       interval: 3s
       timeout: 3s
       retries: 15
-  game:
-    build: .
-    ports:
-      - "8080:8080"
+  backend:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
     environment:
       DATABASE_URL: postgres://islandwar:${POSTGRES_PASSWORD}@postgres:5432/islandwar?sslmode=disable
       APP_ORIGIN: ${GAME_ORIGIN:-http://localhost:8080}
       COOKIE_SECURE: ${COOKIE_SECURE:-false}
-      STATIC_DIR: /app/dist
     depends_on:
       postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/api/health || exit 1"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    ports:
+      - "8080:80"
+    depends_on:
+      backend:
         condition: service_healthy
 volumes:
   pgdata:

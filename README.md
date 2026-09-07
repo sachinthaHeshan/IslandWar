@@ -27,7 +27,7 @@ cp .env.example .env
 docker compose up --build
 ```
 
-Open **http://localhost:8080**. Go serves both the built frontend and API. PostgreSQL uses a persistent Docker volume and is bound to localhost. `docker compose down` stops the services and preserves the database volume.
+Open **http://localhost:8080**. Nginx serves the built frontend and proxies `/api` (including WebSockets) to the Go backend. PostgreSQL uses a persistent Docker volume and is bound to localhost. `docker compose down` stops the services and preserves the database volume. The root `Dockerfile` still builds a single image that serves both from Go if you want that layout.
 
 For another device, set `GAME_ORIGIN` in `.env` to the exact URL everyone will use, such as `http://192.168.1.20:8080`, then restart the game container. For local Vite development, `APP_ORIGINS` accepts a comma-separated list of exact browser origins. Only configured browser origins are accepted. Internet hosting should use HTTPS and `COOKIE_SECURE=true`; provide a PostgreSQL connection with the appropriate TLS settings. The server supports WebSocket upgrades and needs a persistent Go process, so a static frontend host alone is insufficient.
 
