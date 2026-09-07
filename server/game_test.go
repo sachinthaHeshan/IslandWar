@@ -12,17 +12,17 @@ func testRoom() *Room {
 func TestAuthoritativeCombat(t *testing.T) {
 	now := time.Now()
 	r := testRoom()
-	a := &Player{User: User{ID: 1}, Health: 100, Ammo: 12, Connected: true}
+	a := &Player{User: User{ID: 1}, Health: 100, Ammo: 30, Weapon: "ak47", Weapons: map[string]int{"pistol": 15, "ak47": 30}, Connected: true}
 	b := &Player{User: User{ID: 2}, X: .85, Z: -10, Health: 100, Connected: true}
 	r.players[1] = a
 	r.players[2] = b
 	a.input = Input{Pitch: -.08}
 	r.fire(a, now)
-	if b.Health != 75 || a.Ammo != 11 {
+	if b.Health != 72 || a.Ammo != 29 {
 		t.Fatalf("shot: target health=%d ammo=%d", b.Health, a.Ammo)
 	}
 	r.fire(a, now.Add(10*time.Millisecond))
-	if b.Health != 75 {
+	if b.Health != 72 {
 		t.Fatal("fire cooldown bypassed")
 	}
 	for i := 1; i < 4; i++ {
@@ -43,9 +43,9 @@ func TestAuthoritativeCombat(t *testing.T) {
 func TestCoverAndProtection(t *testing.T) {
 	r := testRoom()
 	now := time.Now()
-	p := &Player{User: User{ID: 2}, X: -9, Z: -10, Health: 100, Connected: true}
+	p := &Player{User: User{ID: 2}, X: -12.3, Z: -10, Health: 100, Connected: true}
 	r.players[2] = p
-	_, victim := r.trace(Vec{-9, 1, 0}, Vec{0, 0, -1}, 1, now)
+	_, victim := r.trace(Vec{-12.3, 1, 0}, Vec{0, 0, -1}, 1, now)
 	if victim != nil {
 		t.Fatal("ray shot through crate")
 	}
@@ -64,7 +64,7 @@ func TestCoverAndProtection(t *testing.T) {
 func TestMovementReloadAndTimeout(t *testing.T) {
 	r := testRoom()
 	now := time.Now()
-	p := &Player{User: User{ID: 1}, Health: 100, Ammo: 0, Connected: true, input: Input{X: 100, Z: 100, Sprint: true}, inputAt: now}
+	p := &Player{User: User{ID: 1}, Health: 100, Ammo: 0, Weapon: "pistol", Weapons: map[string]int{"pistol": 0}, Connected: true, input: Input{X: 100, Z: 100, Sprint: true}, inputAt: now}
 	r.players[1] = p
 	r.step(now, .05)
 	if math.Hypot(p.X, p.Z) > .351 {
@@ -81,7 +81,7 @@ func TestMovementReloadAndTimeout(t *testing.T) {
 		t.Fatal("reload did not start")
 	}
 	r.step(now.Add(3*time.Second), .05)
-	if p.Ammo != 12 || p.Reloading {
+	if p.Ammo != 15 || p.Reloading {
 		t.Fatal("reload did not finish")
 	}
 	r.EndAt = now.UnixMilli()
@@ -91,7 +91,7 @@ func TestMovementReloadAndTimeout(t *testing.T) {
 	if r.step(now, .05) {
 		t.Fatal("round completed twice")
 	}
-	if canMove(25, 0) || canMove(-9, -6) {
+	if canMove(145, 0, 0) || canMove(-12.3, -8.2, 0) {
 		t.Fatal("island or crate collision missing")
 	}
 }
