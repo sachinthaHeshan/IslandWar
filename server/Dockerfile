@@ -1,8 +1,8 @@
 FROM golang:1.23-alpine AS build
 WORKDIR /build
-COPY go.mod go.sum ./
+COPY server/go.mod server/go.sum ./
 RUN go mod download
-COPY . ./
+COPY server/ ./
 RUN CGO_ENABLED=0 go build -trimpath -o /islandwar .
 
 FROM alpine:3.21
